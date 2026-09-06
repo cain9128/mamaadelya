@@ -783,18 +783,18 @@ export default function Dashboard() {
                     <label>Свои фото</label>
                     <span className="char-counter">{selectedPhotoEntries.length} фото</span>
                   </div>
-                  <div className="own-photo-slots">
+                  <div className="own-photo-thumbs">
                     {selectedPhotoEntries.map((entry) => (
-                      <div key={entry.id} className="own-photo-slot is-filled">
+                      <div key={entry.id} className="own-photo-thumb">
                         <img src={entry.url} alt={entry.albumName} />
-                        <button type="button" className="own-photo-slot__remove" onClick={() => removeSelectedPhoto(entry.id)} aria-label="Удалить">×</button>
+                        <button type="button" className="own-photo-thumb__remove" onClick={() => removeSelectedPhoto(entry.id)} aria-label="Удалить">×</button>
                       </div>
                     ))}
-                    <button type="button" className="own-photo-upload" onClick={() => ownPhotoInputRef.current?.click()}>
-                      <div className="own-photo-upload__icon">+</div>
-                      <div className="own-photo-upload__title">Загрузить фото</div>
-                    </button>
                   </div>
+                  <button type="button" className="own-photo-upload" onClick={() => ownPhotoInputRef.current?.click()}>
+                    <div className="own-photo-upload__icon">+</div>
+                    <div className="own-photo-upload__title">Загрузить фото</div>
+                  </button>
                   <input ref={ownPhotoInputRef} type="file" accept="image/*" className="hidden-file-input" onChange={handleOwnPhotoUpload} />
                 </div>
 
