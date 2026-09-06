@@ -67,6 +67,7 @@ Deno.serve(async (request) => {
 
       if (isGeminiImageModel) {
         requestBody.modalities = ['image', 'text']
+        requestBody.aspect_ratio = aspectRatio
         requestBody.image_config = { aspect_ratio: aspectRatio }
       } else {
         requestBody.aspect_ratio = aspectRatio
