@@ -317,8 +317,6 @@ export default function Dashboard() {
   const [extraWishes, setExtraWishes] = useState('')
   const [refSlots, setRefSlots] = useState([
     { filled: false, locked: false, src: null },
-    { filled: false, locked: true, src: null },
-    { filled: false, locked: true, src: null },
   ])
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     try { return !!localStorage.getItem('previewforge-current-user') } catch { return false }
@@ -729,7 +727,7 @@ export default function Dashboard() {
                 <div className="field-block">
                   <div className="field-label-row">
                     <label>Референсные фото</label>
-                    <span className="char-counter">{refSlots.filter((s) => s.filled).length} фото · до 3 на платном</span>
+                    <span className="char-counter">{refSlots.filter((s) => s.filled).length} фото</span>
                   </div>
                   <div className="ref-slots">
                     {refSlots.map((slot, slotIdx) => (

@@ -1074,7 +1074,7 @@ body.modal-open .sidebar {
   .editor-grid--studio { grid-template-columns: 1fr; }
   .left-panel--studio { border-right: none; border-bottom: 1px solid rgba(142, 216, 245, 0.18); }
   .format-cards { grid-template-columns: 1fr 1fr; }
-  .ref-slots { grid-template-columns: 1fr 1fr 1fr; }
+  .ref-slots { grid-template-columns: 1fr; }
   .generate-row { grid-template-columns: 1fr; }
   .generate-price { text-align: left; }
 }
