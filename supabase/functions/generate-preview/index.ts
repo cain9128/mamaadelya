@@ -30,50 +30,59 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: 'Only POST requests are supported.' }, 405)
   }
 
-  const openRouterKey = Deno.env.get('OPENROUTER_KEY')
-  if (!openRouterKey) {
-    return jsonResponse({ error: 'OPENROUTER_KEY is not configured.' }, 500)
-  }
-
-  try {
-    const { requestPayload, variants = 1 } = await request.json()
-    const aspectRatio = requestPayload?.aspect_ratio || '16:9'
-    const message = requestPayload?.messages?.[0]
-    if (!message?.content) {
-      return jsonResponse({ error: 'A request payload with image content is required.' }, 400)
+    const openRouterKey = Deno.env.get('OPENROUTER_KEY')
+    if (!openRouterKey) {
+      return jsonResponse({ error: 'OPENROUTER_KEY is not configured.' }, 500)
     }
 
-    const model = Deno.env.get('OPENROUTER_MODEL') || defaultModel
-    const content = Array.isArray(message.content) ? message.content : [{ type: 'text', text: message.content }]
-    const prompt = content
-      .filter((part: any) => part.type === 'text')
-      .map((part: any) => part.text)
-      .join('\n')
-    const inputReferences = content
-      .filter((part: any) => part.type === 'image_url')
-      .map((part: any) => ({
-        type: 'image_url',
-        image_url: part.image_url,
-      }))
-    const images: string[] = []
-    const count = Math.min(Math.max(Number(variants) || 1, 1), 3)
+    try {
+      const { requestPayload, variants = 1 } = await request.json()
+      const aspectRatio = requestPayload?.aspect_ratio || '16:9'
+      const message = requestPayload?.messages?.[0]
+      if (!message?.content) {
+        return jsonResponse({ error: 'A request payload with image content is required.' }, 400)
+      }
 
-    for (let index = 0; index < count; index += 1) {
-      const response = await fetch(openRouterUrl, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${openRouterKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'http://localhost:5173',
-          'X-Title': 'PrewievGen Preview Studio',
-        },
-        body: JSON.stringify({
-          model,
-          prompt,
-          aspect_ratio: aspectRatio,
-          input_references: inputReferences,
-        }),
-      })
+      const model = Deno.env.get('OPENROUTER_MODEL') || defaultModel
+      const content = Array.isArray(message.content) ? message.content : [{ type: 'text', text: message.content }]
+      const prompt = content
+        .filter((part: any) => part.type === 'text')
+        .map((part: any) => part.text)
+        .join('\n')
+      const inputReferences = content
+        .filter((part: any) => part.type === 'image_url')
+        .map((part: any) => ({
+          type: 'image_url',
+          image_url: part.image_url,
+        }))
+      const images: string[] = []
+      const count = Math.min(Math.max(Number(variants) || 1, 1), 3)
+
+      const isGeminiImageModel = model.includes('gemini') && model.includes('image')
+      const requestBody: Record<string, unknown> = {
+        model,
+        prompt,
+        input_references: inputReferences,
+      }
+
+      if (isGeminiImageModel) {
+        requestBody.modalities = ['image', 'text']
+        requestBody.image_config = { aspect_ratio: aspectRatio }
+      } else {
+        requestBody.aspect_ratio = aspectRatio
+      }
+
+      for (let index = 0; index < count; index += 1) {
+        const response = await fetch(openRouterUrl, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${openRouterKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'http://localhost:5173',
+            'X-Title': 'PrewievGen Preview Studio',
+          },
+          body: JSON.stringify(requestBody),
+        })
 
       const result = await response.json()
       if (!response.ok) {
