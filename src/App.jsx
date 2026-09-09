@@ -230,7 +230,7 @@ function Landing() {
               initialMode="login"
               onAuthenticated={() => {
                 setAuthModalOpen(false)
-                navigate('/studio')
+                setTimeout(() => navigate('/studio'), 50)
               }}
               onClose={() => setAuthModalOpen(false)}
             />
