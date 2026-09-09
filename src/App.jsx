@@ -135,7 +135,7 @@ function Landing() {
 
         <section className="marquee">
           <div className="marquee__track">
-            {[...heroPreviews, ...heroPreviews, ...heroPreviews, ...heroPreviews].map((src, i) => (
+            {[...heroPreviews, ...heroPreviews].map((src, i) => (
               <div key={i} className="marquee__card"><img src={src} alt="" /></div>
             ))}
           </div>
@@ -175,7 +175,7 @@ function Landing() {
           </div>
           <div className="marquee" style={{ marginBottom: 0 }}>
             <div className="marquee__track">
-              {[...referencePreviews.map((r) => r.preview), ...referencePreviews.map((r) => r.preview), ...referencePreviews.map((r) => r.preview), ...referencePreviews.map((r) => r.preview)].map((src, i) => (
+              {[...referencePreviews.map((r) => r.preview), ...referencePreviews.map((r) => r.preview)].map((src, i) => (
                 <div key={i} className="marquee__card"><img src={src} alt="" /></div>
               ))}
             </div>
