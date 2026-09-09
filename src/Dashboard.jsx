@@ -333,7 +333,12 @@ export default function Dashboard() {
   const [currentUser, setCurrentUser] = useState(null)
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [pendingGeneration, setPendingGeneration] = useState(false)
-  const displayProfile = currentUser || profile
+  const displayProfile = {
+    name: currentUser?.name || profile.name,
+    email: currentUser?.email || profile.email,
+    plan: currentUser?.plan || profile.plan,
+    credits: currentUser?.credits ?? profile.credits,
+  }
 
   const inputRef = useRef(null)
   const customReferenceInputRef = useRef(null)
