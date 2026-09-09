@@ -31,11 +31,7 @@ export function TransitionProvider({ children }) {
   }, [phase, targetPath, navigate])
 
   useEffect(() => {
-    if (location.pathname.startsWith('/studio') && phase === 'idle') {
-      setPhase('enter-studio')
-      const t = setTimeout(() => setPhase('idle'), 500)
-      return () => clearTimeout(t)
-    }
+    // enter-studio transition removed to avoid blue screen on auth redirect
   }, [location.pathname])
 
   return (
@@ -60,8 +56,10 @@ export function TransitionLink({ to, children, className, onClick }) {
   const handleClick = (event) => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return
     event.preventDefault()
-    onClick?.(event)
-    trigger(to)
+    const shouldNavigate = onClick?.(event) !== false
+    if (shouldNavigate) {
+      trigger(to)
+    }
   }
   return (
     <Link to={to} className={className} onClick={handleClick}>
