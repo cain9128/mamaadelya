@@ -7,6 +7,7 @@ import {
   generationHistory,
   profile,
   referencePreviews,
+  presetsList,
   uploadPhotos,
 } from './lib/mockData'
 
@@ -31,12 +32,19 @@ const toDataUrl = (file) =>
     reader.readAsDataURL(file)
   })
 
+const urlToDataUrl = async (url) => {
+    const response = await fetch(url)
+    const blob = await response.blob()
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result)
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
+  }
+
 const formatMeta = {
   '16x9': { label: 'YouTube 16:9', aspectRatio: '16:9' },
-  '3x4': { label: 'Маркетплейсы 3:4', aspectRatio: '3:4' },
-  '9x16': { label: 'Shorts 9:16', aspectRatio: '9:16' },
-  '1x1': { label: 'Посты 1:1', aspectRatio: '1:1' },
-  '4x3': { label: 'Классика 4:3', aspectRatio: '4:3' },
 }
 
 const buildNanoBananaPrompt = ({ referenceImage, selectedPhotoEntries, text, extraWishes, refSlots, previewFormat }) => {
@@ -126,9 +134,10 @@ const navItems = [
   { to: '/studio/photos', label: 'Мои фото' },
   { to: '/studio/generations', label: 'Мои генерации' },
   { to: '/studio/favorites', label: 'Избранное' },
+  { to: '/studio/presets', label: 'Прессеты' },
+  { to: '/studio/profile', label: 'Профиль' },
 ]
-
-function AuthScreen({ onAuthenticated, onClose, initialMode = 'login' }) {
+export function AuthScreen({ onAuthenticated, onClose, initialMode = 'login' }) {
   const [mode, setMode] = useState(initialMode)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -141,31 +150,35 @@ function AuthScreen({ onAuthenticated, onClose, initialMode = 'login' }) {
   }
   const setLocalUsers = (users) => localStorage.setItem('previewforge-users', JSON.stringify(users))
 
-  const handleLocalAuth = ({ loginMode }) => {
+  const localAuth = ({ loginMode }) => {
     const users = getLocalUsers()
+    const emailKey = email.trim().toLowerCase()
     if (loginMode === 'login') {
-      const user = users.find((entry) => entry.email.toLowerCase() === email.toLowerCase() && entry.password === password)
+      const user = users.find((u) => u.email.toLowerCase() === emailKey && u.password === password)
       if (!user) throw new Error('Неверный email или пароль.')
       localStorage.setItem('previewforge-current-user', JSON.stringify(user))
+      setMessage('Вход выполнен.')
       onAuthenticated?.()
       return
     }
     if (loginMode === 'register') {
-      if (users.some((entry) => entry.email.toLowerCase() === email.toLowerCase())) {
+      if (users.some((u) => u.email.toLowerCase() === emailKey)) {
         throw new Error('Пользователь с таким email уже зарегистрирован.')
       }
-      setLocalUsers([...users, { email: email.toLowerCase(), password }])
-      setMessage('Локальная регистрация успешна. Теперь можно войти в аккаунт.')
-      setMode('login')
+      const newUser = { email: emailKey, password, name: emailKey.split('@')[0], credits: 2, plan: 'Старт' }
+      setLocalUsers([...users, newUser])
+      localStorage.setItem('previewforge-current-user', JSON.stringify(newUser))
+      setMessage('Регистрация успешна.')
+      onAuthenticated?.()
       return
     }
     if (loginMode === 'reset') {
       if (code.length !== 6) throw new Error('Введите 6-значный код из письма.')
       const resetState = JSON.parse(localStorage.getItem('previewforge-reset') || '{}')
-      if (resetState.email?.toLowerCase() !== email.toLowerCase() || resetState.code !== code) {
+      if (resetState.email?.toLowerCase() !== emailKey || resetState.code !== code) {
         throw new Error('Неверный код подтверждения.')
       }
-      const user = users.find((entry) => entry.email.toLowerCase() === email.toLowerCase())
+      const user = users.find((u) => u.email.toLowerCase() === emailKey)
       if (!user) throw new Error('Пользователь не найден.')
       localStorage.removeItem('previewforge-reset')
       setMessage('Код подтверждён. Теперь можно войти в аккаунт.')
@@ -183,14 +196,13 @@ function AuthScreen({ onAuthenticated, onClose, initialMode = 'login' }) {
         try {
           const { error } = await supabase.auth.signInWithPassword({ email, password })
           if (error) throw error
+          setMessage('Вход выполнен.')
           onAuthenticated?.()
           return
         } catch (error) {
-          if (error?.message && /Failed to fetch|fetch/i.test(error.message)) {
-            handleLocalAuth({ loginMode: 'login' })
-            return
-          }
-          throw error
+          console.error('Supabase login error, fallback to local:', error)
+          localAuth({ loginMode: 'login' })
+          return
         }
       }
       if (mode === 'register') {
@@ -200,11 +212,9 @@ function AuthScreen({ onAuthenticated, onClose, initialMode = 'login' }) {
           setMessage('Регистрация создана. Проверьте почту и подтвердите аккаунт.')
           return
         } catch (error) {
-          if (error?.message && /Failed to fetch|fetch/i.test(error.message)) {
-            handleLocalAuth({ loginMode: 'register' })
-            return
-          }
-          throw error
+          console.error('Supabase signup error, fallback to local:', error)
+          localAuth({ loginMode: 'register' })
+          return
         }
       }
       if (mode === 'reset') {
@@ -216,11 +226,9 @@ function AuthScreen({ onAuthenticated, onClose, initialMode = 'login' }) {
           setMode('login')
           return
         } catch (error) {
-          if (error?.message && /Failed to fetch|fetch/i.test(error.message)) {
-            handleLocalAuth({ loginMode: 'reset' })
-            return
-          }
-          throw error
+          console.error('Supabase verifyOtp error, fallback to local:', error)
+          localAuth({ loginMode: 'reset' })
+          return
         }
       }
     } catch (error) {
@@ -241,13 +249,11 @@ function AuthScreen({ onAuthenticated, onClose, initialMode = 'login' }) {
         setMode('reset')
         return
       } catch (error) {
-        if (error?.message && /Failed to fetch|fetch/i.test(error.message)) {
-          localStorage.setItem('previewforge-reset', JSON.stringify({ email: email.toLowerCase(), code: '123456' }))
-          setMessage('Код для сброса сохранён локально: 123456. Введите его ниже.')
-          setMode('reset')
-          return
-        }
-        throw error
+        console.error('Supabase resetPassword error, fallback to local:', error)
+        localStorage.setItem('previewforge-reset', JSON.stringify({ email: email.trim().toLowerCase(), code: '123456' }))
+        setMessage('Код для сброса сохранён локально: 123456. Введите его ниже.')
+        setMode('reset')
+        return
       }
     } catch (error) {
       setMessage(error.message || 'Не удалось отправить код сброса.')
@@ -261,7 +267,7 @@ function AuthScreen({ onAuthenticated, onClose, initialMode = 'login' }) {
       <div className="auth-card">
         <div className="brand-block">
           <span className="mini-label">Studio</span>
-          <h1>PrewievGen</h1>
+          <h1>PreviewGen</h1>
           <p>Генерация YouTube-обложек и превью за несколько минут.</p>
         </div>
         <form onSubmit={handleAuth} className="auth-form">
@@ -312,16 +318,23 @@ export default function Dashboard() {
   const [generatedImages, setGeneratedImages] = useState([])
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationError, setGenerationError] = useState('')
-  const [previewText, setPreviewText] = useState('Как открыть свой бизнес без хаоса')
+  const [previewText, setPreviewText] = useState('')
   const [previewFormat, setPreviewFormat] = useState('16x9')
   const [extraWishes, setExtraWishes] = useState('')
+  const [editingImage, setEditingImage] = useState(null)
+  const [editPrompt, setEditPrompt] = useState('')
+  const [presetsOpen, setPresetsOpen] = useState(false)
   const [refSlots, setRefSlots] = useState([
     { filled: false, locked: false, src: null },
   ])
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     try { return !!localStorage.getItem('previewforge-current-user') } catch { return false }
   })
+  const [currentUser, setCurrentUser] = useState(null)
   const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [pendingGeneration, setPendingGeneration] = useState(false)
+  const displayProfile = currentUser || profile
+
   const inputRef = useRef(null)
   const customReferenceInputRef = useRef(null)
   const ownPhotoInputRef = useRef(null)
@@ -329,13 +342,54 @@ export default function Dashboard() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setIsAuthenticated(true)
-        localStorage.setItem('previewforge-current-user', JSON.stringify({ email: session.user.email, id: session.user.id }))
+    let cancelled = false
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (cancelled) return
+        if (session?.user) {
+          setIsAuthenticated(true)
+          setCurrentUser({ email: session.user.email, id: session.user.id })
+          return
+        }
+      } catch {
+        // Supabase недоступен — проверим локальный storage
       }
-    })
+      try {
+        const raw = localStorage.getItem('previewforge-current-user')
+        if (raw) {
+          const user = JSON.parse(raw)
+          if (user?.email) {
+            setIsAuthenticated(true)
+            setCurrentUser(user)
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    checkSession()
+
+    try {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+        if (event === 'SIGNED_IN') {
+          setIsAuthenticated(true)
+        } else if (event === 'SIGNED_OUT') {
+          setIsAuthenticated(false)
+          setCurrentUser(null)
+        }
+      })
+      return () => { cancelled = true; subscription.unsubscribe() }
+    } catch {
+      return () => { cancelled = true }
+    }
   }, [])
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    setIsAuthenticated(false)
+    setCurrentUser(null)
+  }
 
   const handleCustomReferenceUpload = async (event) => {
     const file = event.target.files?.[0]
@@ -473,6 +527,29 @@ export default function Dashboard() {
     setPickerType(null)
     refreshPrompt(referenceItem, selectedPhotoEntries, previewText, extraWishes, refSlots, previewFormat)
   }
+
+  const handlePresetSelect = async (presetItem) => {
+    try {
+      const dataUrl = await urlToDataUrl(presetItem.preview)
+      if (!dataUrl || !dataUrl.startsWith('data:')) {
+        console.error('Invalid data URL from preset:', presetItem.preview)
+        return
+      }
+      setRefSlots((current) => {
+        const idx = current.findIndex((s) => !s.locked && !s.filled)
+        if (idx === -1) return current
+        const next = [...current]
+        next[idx] = { ...next[idx], filled: true, src: dataUrl }
+        return next
+      })
+      setSelectedReference({ id: presetItem.id, title: presetItem.title, preview: dataUrl })
+      setPresetsOpen(false)
+      refreshPrompt({ id: presetItem.id, title: presetItem.title, preview: dataUrl }, selectedPhotoEntries, previewText, extraWishes, refSlots, previewFormat)
+      navigate('/studio')
+    } catch (error) {
+      console.error('Failed to load preset image:', presetItem.preview, error)
+    }
+  }
   const handleTextChange = (event) => {
     const nextText = event.target.value
     setPreviewText(nextText)
@@ -485,6 +562,11 @@ export default function Dashboard() {
   }
 
   const handleGeneratePreview = async () => {
+    if (!isAuthenticated) {
+      setPendingGeneration(true)
+      setAuthModalOpen(true)
+      return
+    }
     const sourceEntries = selectedPhotoEntries.length
       ? selectedPhotoEntries
       : [{ url: selectedReference?.preview || uploadPhotos[0], albumName: 'Исходник', description: 'Главный визуальный источник.' }]
@@ -520,6 +602,48 @@ export default function Dashboard() {
     }
   }
 
+  const handleEditImage = async (image) => {
+    if (!editPrompt.trim()) return
+
+    const formatInfo = formatMeta['16x9']
+    const requestPayload = {
+      messages: [{
+        content: [
+          { type: 'text', text: `Внеси изменения в изображение: ${editPrompt}\nСохрани общий стиль и композицию, но учти указанные правки.\nФормат: ${formatInfo.label}` },
+          { type: 'image_url', image_url: { url: image.url } },
+        ]
+      }],
+      aspect_ratio: '16:9',
+    }
+
+    setIsGenerating(true)
+    setGenerationError('')
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-preview', {
+        body: { requestPayload, variants: 1 }
+      })
+      if (error) throw error
+      if (!data?.images?.length) throw new Error('OpenRouter не вернул изображения.')
+      setGeneratedImages(data.images.map((url, index) => ({
+        id: `${Date.now()}-${index}`,
+        title: editPrompt || `Вариант ${index + 1}`,
+        label: `Вариант ${index + 1}`,
+        url,
+      })))
+      setEditingImage(null)
+      setEditPrompt('')
+    } catch (error) {
+      let message = error.message || 'Не удалось отредактировать превью.'
+      if (error.context instanceof Response) {
+        const responseBody = await error.context.json().catch(() => null)
+        message = responseBody?.error || message
+      }
+      setGenerationError(message)
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
   const downloadGeneratedImage = (imageUrl, fileName) => {
     const link = document.createElement('a')
     link.href = imageUrl
@@ -530,13 +654,20 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    if (editorOpen || authModalOpen || pickerType) {
+    if (editorOpen || pickerType) {
       document.body.classList.add('modal-open')
     } else {
       document.body.classList.remove('modal-open')
     }
     return () => document.body.classList.remove('modal-open')
-  }, [editorOpen, authModalOpen, pickerType])
+  }, [editorOpen, pickerType])
+
+  useEffect(() => {
+    if (pendingGeneration && isAuthenticated && !authModalOpen) {
+      setPendingGeneration(false)
+      handleGeneratePreview()
+    }
+  }, [pendingGeneration, isAuthenticated, authModalOpen])
 
   return (
     <div className="dashboard-shell">
@@ -556,17 +687,20 @@ export default function Dashboard() {
           ))}
         </nav>
         <div className="profile-card">
-          <div className="profile-avatar"><img src={dogAvatarSvgDataUrl} alt={profile.name} /></div>
+          <div className="profile-avatar"><img src={dogAvatarSvgDataUrl} alt={displayProfile.name} /></div>
           <div>
-            <h3>{profile.name}</h3>
-            <p>{profile.email}</p>
+            <h3>{displayProfile.name}</h3>
+            <p>{displayProfile.email}</p>
           </div>
           <div className="profile-meta">
-            <span>{profile.plan}</span>
-            <span>{profile.credits} credits</span>
+            <span>{displayProfile.plan}</span>
+            <span>{displayProfile.credits} credits</span>
           </div>
         </div>
         <button className="primary-button full-width" onClick={openEditor}>Создать новое превью</button>
+        {isAuthenticated && (
+          <button className="ghost-button full-width" onClick={handleSignOut} style={{ marginTop: 8 }}>Выйти из аккаунта</button>
+        )}
       </aside>
 
       <main className="content-panel">
@@ -582,9 +716,12 @@ export default function Dashboard() {
             </svg>
             <span>На главный экран</span>
           </button>
-          <button type="button" className="ghost-button auth-top-button" onClick={() => setAuthModalOpen(true)}>
-            {isAuthenticated ? 'Профиль' : 'Войти'}
-          </button>
+          <NavLink to="/studio/profile" className="profile-top-btn" aria-label="Профиль">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 20c0-4 4-6 8-6s8 2 8 6" />
+            </svg>
+          </NavLink>
         </div>
         <Routes>
           <Route path="/" element={
@@ -673,10 +810,59 @@ export default function Dashboard() {
               </div>
             </section>
           } />
+          <Route path="/presets" element={
+            <section>
+              <div className="panel-header"><div><span className="mini-label">Прессеты</span><h2>Шаблоны обложек</h2></div></div>
+              <div className="picker-grid">
+                {referencePreviews.filter((item) => item.isPreset).map((item) => (
+                  <button key={item.id} type="button" className="picker-option-card" onClick={() => { handleReferenceChange(item); navigate('/studio') }}>
+                    <img src={item.preview} alt={item.title} /><span>{item.title}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          } />
+          <Route path="/profile" element={
+            <section>
+              <div className="panel-header"><div><span className="mini-label">Профиль</span><h2>Аккаунт</h2></div></div>
+              <div className="profile-block">
+                <div className="profile-card">
+                  <div className="profile-card__avatar">
+                    <span>{displayProfile.name.split(' ').map((n) => n[0]).join('')}</span>
+                  </div>
+                  <div className="profile-card__info">
+                    <h3>{displayProfile.name}</h3>
+                    <p>{displayProfile.email}</p>
+                  </div>
+                </div>
+                <div className="profile-stats">
+                  <div className="profile-stat">
+                    <span className="profile-stat__value">{displayProfile.credits}</span>
+                    <span className="profile-stat__label">Токенов</span>
+                  </div>
+                  <div className="profile-stat">
+                    <span className="profile-stat__value">{displayProfile.plan}</span>
+                    <span className="profile-stat__label">Тариф</span>
+                  </div>
+                </div>
+                {isAuthenticated && (
+                  <div className="profile-section">
+                    <button className="ghost-button" type="button" onClick={handleSignOut}>Выйти из аккаунта</button>
+                  </div>
+                )}
+                <div className="profile-section">
+                  <h3>История операций</h3>
+                  <div className="profile-empty">
+                    <p>Платёжная система не подключена. История появится после интеграции.</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+          } />
         </Routes>
       </main>
 
-      <div className="editor-overlay" onClick={closeEditor} style={{ display: editorOpen ? 'flex' : 'none' }}>
+      <div className="editor-overlay" style={{ display: editorOpen ? 'flex' : 'none' }}>
           <div className="editor-modal editor-modal--studio" onClick={(e) => e.stopPropagation()}>
             <div className="editor-header editor-header--studio">
               <h2>Создать превью</h2>
@@ -690,25 +876,39 @@ export default function Dashboard() {
                     <label>Промпт для обложки</label>
                     <span className="char-counter">{previewText.length} / 512</span>
                   </div>
-                  <textarea
-                    className="prompt-textarea"
-                    value={previewText}
-                    onChange={handleTextChange}
-                    maxLength={512}
-                    rows={4}
-                    placeholder="Введите условия для генерации, например: Обложка для youtube канала на тему Как генерировать превью к видео с текстом 'Генерация обложек через Thumby'"
-                  />
+                  <div className="prompt-textarea-wrapper">
+                    <textarea
+                      className="prompt-textarea"
+                      value={previewText}
+                      onChange={handleTextChange}
+                      maxLength={512}
+                      rows={4}
+                    />
+                    {!previewText && (
+                      <div className="prompt-hint">
+                        Напишите то, что вы хотите видеть на своей обложке. Советуем всегда добавлять референс
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                <div className="studio-tip">
+                  <span className="studio-tip__icon">💡</span>
+                  <div className="studio-tip__text">
+                    Советую всегда использовать референс для четкой генерации. После того как вы сгенерировали вы можете внести свои правки нажав кнопку "Редактировать" В промпте пишите все детали конкретно.
+                  </div>
+                </div>
+
+                <button type="button" className="presets-banner" onClick={() => setPresetsOpen(true)}>
+                  <span className="presets-banner__label">🎨 Выбрать прессет</span>
+                  <span className="presets-banner__hint">Нажмите, чтобы открыть библиотеку шаблонов</span>
+                </button>
 
                 <div className="field-block">
                   <label>Формат превью</label>
                   <div className="format-cards">
                     {[
                       { id: '16x9', title: 'YouTube', sub: 'YouTube, обложки блогов', size: '1280x720' },
-                      { id: '3x4', title: 'Маркетплейсы', sub: 'Ozon, WB, Я.Маркет', size: '768x1024' },
-                      { id: '9x16', title: 'Stories', sub: 'Shorts, Reels, Stories', size: '720x1280' },
-                      { id: '1x1', title: 'Посты', sub: 'Посты в соцсетях, Instagram', size: '960x960' },
-                      { id: '4x3', title: 'Классика', sub: 'Классический формат', size: '1024x768' },
                     ].map((card) => (
                       <button
                         key={card.id}
@@ -830,7 +1030,26 @@ export default function Dashboard() {
                         {generatedImages.map((image) => (
                           <div key={image.id} className="result-hero__card">
                             <img src={image.url} alt={image.title} />
-                            <button type="button" className="result-download" onClick={() => downloadGeneratedImage(image.url, `${image.label}.png`)}>Скачать</button>
+                            {editingImage === image.id ? (
+                              <div className="edit-prompt-area">
+                                <textarea
+                                  className="prompt-textarea"
+                                  value={editPrompt}
+                                  onChange={(e) => setEditPrompt(e.target.value)}
+                                  placeholder="Опишите, что нужно изменить..."
+                                  rows={3}
+                                />
+                                <div className="edit-prompt-actions">
+                                  <button type="button" className="primary-button" onClick={() => handleEditImage(image)}>Применить</button>
+                                  <button type="button" className="ghost-button" onClick={() => { setEditingImage(null); setEditPrompt('') }}>Отмена</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="result-hero__actions">
+                                <button type="button" className="result-download" onClick={() => downloadGeneratedImage(image.url, `${image.label}.png`)}>Скачать</button>
+                                <button type="button" className="result-download" onClick={() => setEditingImage(image.id)}>Редактировать</button>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -889,12 +1108,42 @@ export default function Dashboard() {
         </div>,
         document.body
       )}
+      {presetsOpen && createPortal(
+        <div className="picker-overlay" onClick={() => setPresetsOpen(false)}>
+          <div className="picker-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="picker-header">
+              <h3>Выбрать прессет</h3>
+              <button className="ghost-button" type="button" onClick={() => setPresetsOpen(false)}>Закрыть</button>
+            </div>
+            <div className="picker-grid">
+              {presetsList.map((item) => (
+                <button key={item.id} type="button" className="picker-option-card" onClick={() => handlePresetSelect(item)}>
+                  <img src={item.preview} alt={item.title} /><span>{item.title}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
       {authModalOpen && (
-        <AuthScreen
-          initialMode="login"
-          onAuthenticated={() => { setIsAuthenticated(true); setAuthModalOpen(false) }}
-          onClose={() => setAuthModalOpen(false)}
-        />
+        <div className="picker-overlay" onClick={() => setAuthModalOpen(false)}>
+          <div onClick={(event) => event.stopPropagation()}>
+            <AuthScreen
+              onAuthenticated={() => {
+                setIsAuthenticated(true)
+                setAuthModalOpen(false)
+                setTimeout(() => {
+                  if (pendingGeneration) {
+                    setPendingGeneration(false)
+                    handleGeneratePreview()
+                  }
+                }, 300)
+              }}
+              onClose={() => setAuthModalOpen(false)}
+            />
+          </div>
+        </div>
       )}
     </div>
   )
