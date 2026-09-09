@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { NavLink, Route, Routes, useNavigate } from 'react-router-dom'
 import { supabase } from './lib/supabase'
+import { getProfile, createProfile } from './lib/profile'
 import {
   albums as initialAlbums,
   generationHistory,
@@ -196,6 +197,7 @@ export function AuthScreen({ onAuthenticated, onClose, initialMode = 'login' }) 
         try {
           const { error } = await supabase.auth.signInWithPassword({ email, password })
           if (error) throw error
+          localStorage.setItem('previewforge-current-user', JSON.stringify({ email, name: email.split('@')[0] }))
           setMessage('Вход выполнен.')
           onAuthenticated?.()
           return
@@ -207,8 +209,17 @@ export function AuthScreen({ onAuthenticated, onClose, initialMode = 'login' }) 
       }
       if (mode === 'register') {
         try {
-          const { error } = await supabase.auth.signUp({ email, password })
+          const { data, error } = await supabase.auth.signUp({ email, password })
           if (error) throw error
+          const userId = data.user?.id
+          if (userId) {
+            try {
+              await createProfile({ userId, email, fullName: email.split('@')[0] })
+            } catch {
+              // ignore profile creation error
+            }
+          }
+          localStorage.setItem('previewforge-current-user', JSON.stringify({ email, name: email.split('@')[0] }))
           setMessage('Регистрация создана. Проверьте почту и подтвердите аккаунт.')
           return
         } catch (error) {
@@ -331,13 +342,14 @@ export default function Dashboard() {
     try { return !!localStorage.getItem('previewforge-current-user') } catch { return false }
   })
   const [currentUser, setCurrentUser] = useState(null)
+  const [profileData, setProfileData] = useState(null)
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [pendingGeneration, setPendingGeneration] = useState(false)
   const displayProfile = {
-    name: currentUser?.name || profile.name,
-    email: currentUser?.email || profile.email,
-    plan: currentUser?.plan || profile.plan,
-    credits: currentUser?.credits ?? profile.credits,
+    name: currentUser?.name || profileData?.full_name || profile.name,
+    email: currentUser?.email || profileData?.email || profile.email,
+    plan: currentUser?.plan || profileData?.plan || profile.plan,
+    credits: currentUser?.credits ?? profileData?.credits ?? profile.credits,
   }
 
   const inputRef = useRef(null)
@@ -345,6 +357,20 @@ export default function Dashboard() {
   const ownPhotoInputRef = useRef(null)
   const ownPhotoIdRef = useRef(0)
   const navigate = useNavigate()
+
+  const loadSupabaseProfile = async (userId, email) => {
+    try {
+      let data = await getProfile(userId)
+      if (!data) {
+        data = await createProfile({ userId, email, fullName: email?.split('@')[0] })
+      }
+      if (data && !cancelled) {
+        setProfileData(data)
+      }
+    } catch {
+      // ignore profile load error
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -355,6 +381,7 @@ export default function Dashboard() {
         if (session?.user) {
           setIsAuthenticated(true)
           setCurrentUser({ email: session.user.email, id: session.user.id })
+          await loadSupabaseProfile(session.user.id, session.user.email)
           return
         }
       } catch {
@@ -376,12 +403,15 @@ export default function Dashboard() {
     checkSession()
 
     try {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-        if (event === 'SIGNED_IN') {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
           setIsAuthenticated(true)
+          setCurrentUser({ email: session.user.email, id: session.user.id })
+          loadSupabaseProfile(session.user.id, session.user.email)
         } else if (event === 'SIGNED_OUT') {
           setIsAuthenticated(false)
           setCurrentUser(null)
+          setProfileData(null)
         }
       })
       return () => { cancelled = true; subscription.unsubscribe() }
@@ -394,6 +424,7 @@ export default function Dashboard() {
     await supabase.auth.signOut()
     setIsAuthenticated(false)
     setCurrentUser(null)
+    setProfileData(null)
   }
 
   const handleCustomReferenceUpload = async (event) => {
@@ -848,6 +879,14 @@ export default function Dashboard() {
                   <div className="profile-stat">
                     <span className="profile-stat__value">{displayProfile.plan}</span>
                     <span className="profile-stat__label">Тариф</span>
+                  </div>
+                  <div className="profile-stat">
+                    <span className="profile-stat__value">{currentUser?.id ? currentUser.id.slice(0, 8) : '—'}</span>
+                    <span className="profile-stat__label">ID</span>
+                  </div>
+                  <div className="profile-stat">
+                    <span className="profile-stat__value">{profileData?.created_at ? new Date(profileData.created_at).toLocaleDateString('ru-RU') : '—'}</span>
+                    <span className="profile-stat__label">Регистрация</span>
                   </div>
                 </div>
                 {isAuthenticated && (

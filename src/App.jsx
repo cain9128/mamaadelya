@@ -65,6 +65,19 @@ function CompareSlider({ before, after, alt }) {
 function Landing() {
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const navigate = useNavigate()
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    try { return !!localStorage.getItem('previewforge-current-user') } catch { return false }
+  })
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      try {
+        setIsAuthenticated(!!localStorage.getItem('previewforge-current-user'))
+      } catch { /* ignore */ }
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <div>
       <header className="nav">
@@ -85,10 +98,17 @@ function Landing() {
               <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0h-.056zm4.962 7.224c-.2 1.05-.788 1.482-1.338 1.545l-3.259.464s-1.303.172-2.606-.264c0 0-.49-.15-.49-1.05 0-.9.724-1.17.724-1.17l3.464-.49s1.506-.207 2.507 1.05c.5.75.5 1.5.5 1.5s.464 1.95-.464 2.85c-.928.9-2.85.9-2.85.9l-3.464.49s-1.05.15-1.656-.3c-.606-.45-1.05-1.2-.464-1.95.586-.75 2.408-1.05 2.408-1.05l3.464-.49s.928-.15.928-1.2c0-1.05-.928-1.05-.928-1.05s-.928 0-1.506.45c-.578.45-1.05.9-1.05 1.95 0 1.05.464 1.5.464 1.5l-1.506 1.95s-.464.6.464 1.05c.928.45 2.408 0 2.408 0l3.464-.49s1.506-.15 1.962-1.05c.464-.9.464-1.5.464-1.5s0-1.5-.464-1.95c-.464-.45-1.506-.45-1.506-.45l-3.464.49s-1.506.15-1.962-.45c-.464-.6 0-1.05 0-1.05l1.962-2.4s.464-.6 1.506-.45c1.05.15 1.506.6 1.506.6l.928 1.5s.464.6 0 1.2c-.464.6-1.506.9-1.506.9z"/></svg>
               <span>Мы в Telegram</span>
             </a>
-            <button type="button" className="tg-badge tg-badge--login" onClick={() => setAuthModalOpen(true)} aria-label="Войти">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-              <span>Войти</span>
-            </button>
+            {isAuthenticated ? (
+              <button type="button" className="tg-badge tg-badge--login" onClick={() => navigate('/studio')} aria-label="Профиль">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span>Профиль</span>
+              </button>
+            ) : (
+              <button type="button" className="tg-badge tg-badge--login" onClick={() => setAuthModalOpen(true)} aria-label="Войти">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                <span>Войти</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -219,7 +239,11 @@ function Landing() {
           <div className="footer__links">
             <a href="#how">Начать генерировать</a>
             <a href="#pricing">Тарифы</a>
-            <TransitionLink to="/studio" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setAuthModalOpen(true); return false; }}>Войти</TransitionLink>
+            {isAuthenticated ? (
+              <TransitionLink to="/studio" onClick={(event) => { event.preventDefault(); event.stopPropagation(); return false; }}>Профиль</TransitionLink>
+            ) : (
+              <TransitionLink to="/studio" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setAuthModalOpen(true); return false; }}>Войти</TransitionLink>
+            )}
           </div>
         </div>
       </footer>
