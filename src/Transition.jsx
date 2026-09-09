@@ -15,9 +15,13 @@ export function TransitionProvider({ children }) {
   const enterTimeoutRef = useRef(null)
 
   const trigger = useCallback((path) => {
+    if (path === '/studio') {
+      navigate(path)
+      return
+    }
     setTargetPath(path)
     setPhase('enter')
-  }, [])
+  }, [navigate])
 
   useEffect(() => {
     if (phase !== 'enter') return
