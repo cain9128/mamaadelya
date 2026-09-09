@@ -65,7 +65,12 @@ export default function ProfilePage() {
   if (checking) {
     return (
       <div className="page-shell">
-        <div className="panel-header"><div><span className="mini-label">Профиль</span><h2>Загрузка...</h2></div></div>
+        <div className="profile-page-header">
+          <div className="profile-page-header__text">
+            <span className="mini-label">Профиль</span>
+            <h2>Загрузка...</h2>
+          </div>
+        </div>
       </div>
     )
   }
@@ -73,7 +78,12 @@ export default function ProfilePage() {
   if (!profile) {
     return (
       <div className="page-shell">
-        <div className="panel-header"><div><span className="mini-label">Профиль</span><h2>Доступ запрещён</h2></div></div>
+        <div className="profile-page-header">
+          <div className="profile-page-header__text">
+            <span className="mini-label">Профиль</span>
+            <h2>Доступ запрещён</h2>
+          </div>
+        </div>
         <section className="container section">
           <p>Войдите в аккаунт, чтобы просматривать профиль.</p>
           <button className="btn btn--primary" onClick={() => navigate('/')}>На главную</button>
@@ -84,12 +94,12 @@ export default function ProfilePage() {
 
   return (
     <div className="page-shell">
-      <div className="panel-header">
-        <div>
+      <div className="profile-page-header">
+        <div className="profile-page-header__text">
           <span className="mini-label">Профиль</span>
           <h2>Личный кабинет</h2>
         </div>
-        <button className="ghost-button" type="button" onClick={() => navigate('/studio')}>В студию</button>
+        <button className="btn btn--primary btn--profile-back" type="button" onClick={() => navigate('/studio')}>В студию</button>
       </div>
       <section className="container section">
         <div className="profile-card profile-card--large">

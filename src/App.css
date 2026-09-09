@@ -919,6 +919,25 @@
   background: rgba(7, 12, 20, 0.85);
 }
 
+.profile-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32px 32px 18px;
+}
+
+.profile-page-header__text h2 {
+  margin: 8px 0 0;
+  font-size: clamp(1.7rem, 2vw, 2.2rem);
+}
+
+.btn--profile-back {
+  padding: 14px 22px;
+  font-size: 0.95rem;
+  border-radius: 14px;
+  box-shadow: 0 10px 20px rgba(47, 159, 196, 0.25);
+}
+
 .profile-card--large {
   max-width: 520px;
   margin: 0 auto 18px;
