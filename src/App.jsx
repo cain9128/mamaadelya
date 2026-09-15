@@ -3,6 +3,8 @@ import { BrowserRouter, Route, Routes, Link, useNavigate } from 'react-router-do
 import Dashboard, { AuthScreen } from './Dashboard'
 import ProfilePage from './ProfilePage'
 import { TransitionProvider, TransitionLink } from './Transition'
+import { referencePreviews } from './lib/mockData'
+
 import { OfferPage, PrivacyPage } from './LegalPages'
 import { LEGAL } from './lib/legal'
 import './App.css'
