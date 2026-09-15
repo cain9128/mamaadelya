@@ -79,12 +79,13 @@ export default function ProfilePage() {
     }
 
     // Show payment status message + auto-verify payment via Success URL signature
+    const outSum = searchParams.get('OutSum')
+    const invId = searchParams.get('InvId')
+    const signature = searchParams.get('SignatureValue')
     const payment = searchParams.get('payment')
-    if (payment === 'success') {
-      const outSum = searchParams.get('OutSum')
-      const invId = searchParams.get('InvId')
-      const signature = searchParams.get('SignatureValue')
-      if (outSum && invId && signature) {
+    if (payment === 'fail') {
+      setPaymentMessage('Оплата не прошла. Попробуйте ещё раз.')
+    } else if (outSum && invId && signature) {
         // Robokassa appended its signature to the Success URL redirect.
         // verify-payment checks it server-side and credits the profile.
         setPaymentMessage('Проверяем оплату...')
@@ -116,11 +117,8 @@ export default function ProfilePage() {
           }
           window.history.replaceState({}, '', '/profile')
         })()
-      } else {
-        setPaymentMessage('Оплата прошла успешно! Если кредиты не появились в течение 5 минут, сообщите об этом в поддержку.')
-      }
-    } else if (payment === 'fail') {
-      setPaymentMessage('Оплата не прошла. Попробуйте ещё раз.')
+    } else if (payment === 'success') {
+      setPaymentMessage('Оплата прошла успешно! Если кредиты не появились в течение 5 минут, сообщите об этом в поддержку.')
     }
   }, [searchParams])
 
