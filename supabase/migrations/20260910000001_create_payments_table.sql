@@ -1,4 +1,4 @@
--- Migration: create payments table for YooMoney integration
+-- Migration: create payments table (история платежей Robokassa)
 -- Apply manually in Supabase SQL editor.
 
 create table if not exists public.payments (

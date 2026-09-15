@@ -86,7 +86,6 @@ function ExamplesMarquee() {
 
 const plans = [
   { id: 'start', name: 'Старт', price: 0, credits: 2, period: '/ навсегда', features: ['2 бесплатные генерации при регистрации', 'Базовые стили', 'Скачивание в PNG'], featured: false, cta: 'Начать бесплатно' },
-  { id: 'test', name: 'Тест', price: 10, credits: 1, period: 'разово', features: ['1 генерация', 'Быстрая проверка оплаты', 'Все стили'], featured: false, cta: 'Купить' },
   { id: 'creator', name: 'Креатор', price: 890, credits: 14, period: '/ месяц', features: ['14 генераций (токенов)', 'Все стили и пресеты', 'Загрузка референсов', 'PNG + WebP экспорт'], featured: false, cta: 'Купить' },
   { id: 'blogger', name: 'Блогер', price: 1390, credits: 24, period: '/ месяц', features: ['24 генерации (токенов)', 'Все стили и пресеты', 'Загрузка референсов', 'PNG + WebP экспорт'], featured: true, cta: 'Купить' },
   { id: 'studio', name: 'Студия УЛЬТРАВЫГОДА', price: 2550, credits: 60, period: '/ месяц', features: ['60 генераций (токенов)', 'Все стили и пресеты', 'Загрузка референсов', 'PNG + WebP экспорт'], featured: false, cta: 'Купить' },

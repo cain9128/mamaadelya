@@ -4,7 +4,6 @@ import { supabase } from './lib/supabase'
 import { getProfile, createProfile } from './lib/profile'
 
 const purchasePlans = [
-  { id: 'test', name: 'Тест', price: 10, credits: 1, period: 'разово', features: ['1 генерация', 'Быстрая проверка оплаты', 'Все стили'], featured: false },
   { id: 'creator', name: 'Креатор', price: 890, credits: 14, period: '/ месяц', features: ['14 генераций (токенов)', 'Все стили и пресеты', 'Загрузка референсов', 'PNG + WebP экспорт'], featured: false },
   { id: 'blogger', name: 'Блогер', price: 1390, credits: 24, period: '/ месяц', features: ['24 генерации (токенов)', 'Все стили и пресеты', 'Загрузка референсов', 'PNG + WebP экспорт'], featured: true },
   { id: 'studio', name: 'Студия УЛЬТРАВЫГОДА', price: 2550, credits: 60, period: '/ месяц', features: ['60 генераций (токенов)', 'Все стили и пресеты', 'Загрузка референсов', 'PNG + WebP экспорт'], featured: false },
