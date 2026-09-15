@@ -3,8 +3,6 @@ import { BrowserRouter, Route, Routes, Link, useNavigate } from 'react-router-do
 import Dashboard, { AuthScreen } from './Dashboard'
 import ProfilePage from './ProfilePage'
 import { TransitionProvider, TransitionLink } from './Transition'
-import { referencePreviews } from './lib/mockData'
-
 import { OfferPage, PrivacyPage } from './LegalPages'
 import { LEGAL } from './lib/legal'
 import './App.css'
@@ -231,13 +229,7 @@ function Landing() {
           <TransitionLink to="/studio" className="btn btn--primary" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setAuthModalOpen(true); return false; }}>Попробовать бесплатно</TransitionLink>
         </section>
 
-        <section className="marquee">
-          <div className="marquee__track">
-            {[...heroPreviews, ...heroPreviews, ...heroPreviews, ...heroPreviews].map((src, i) => (
-              <div key={i} className="marquee__card"><img src={src} alt="" /></div>
-            ))}
-          </div>
-        </section>
+        <HeroMarquee />
 
         <section className="container pain">
           <h2 className="pain__title">
@@ -266,16 +258,11 @@ function Landing() {
         </section>
 
 
-        <section className="container section" id="examples">
-          <div className="section__head">
-            <h2 className="section__title">Примеры <span>генераций</span></h2>
-            <p className="section__subtitle">Вдохновляйся готовыми стилями или загружай свой — нейросеть подстроится.</p>
-          </div>
-          <div className="marquee" style={{ marginBottom: 0 }}>
-            <div className="marquee__track">
-              {[...referencePreviews.map((r) => r.preview), ...referencePreviews.map((r) => r.preview), ...referencePreviews.map((r) => r.preview), ...referencePreviews.map((r) => r.preview)].map((src, i) => (
-                <div key={i} className="marquee__card"><img src={src} alt="" /></div>
-              ))}
+        <section className="section" id="examples">
+          <div className="container">
+            <div className="section__head">
+              <h2 className="section__title">Примеры <span>генераций</span></h2>
+              <p className="section__subtitle">Вдохновляйся готовыми стилями или загружай свой — нейросеть подстроится.</p>
             </div>
           </div>
           <ExamplesMarquee />
