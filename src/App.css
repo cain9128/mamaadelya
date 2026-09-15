@@ -189,23 +189,41 @@
   line-height: 1.6;
 }
 
-/* === Preview Marquee === */
-.marquee {
+/* === Preview marquees: two fully separate blocks ===
+   HeroMarquee (top) and ExamplesMarquee (under "Примеры генераций")
+   share NOTHING: no common classes, keyframes, transforms or timers.
+   Each block doubles its own content inside its own track and moves
+   the track by exactly one half (-50%), so the loop is seamless. */
+
+/* --- 1. Top ticker (hero) --- */
+.hero-marquee {
   position: relative;
   margin: 32px 0 64px;
   overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 4%, #000 96%, transparent);
 }
 
-.marquee__track {
+.hero-marquee__track {
   display: flex;
-  gap: 0;
   width: max-content;
-  animation: marquee 40s linear infinite;
   will-change: transform;
+  animation: hero-scroll 60s linear infinite;
 }
 
-.marquee__card {
+.hero-marquee:hover .hero-marquee__track {
+  animation-play-state: paused;
+}
+
+.hero-marquee__half {
+  display: flex;
+  flex-shrink: 0;
+  align-items: stretch;
+}
+
+.hero-marquee__card {
   flex: 0 0 344px;
+  width: 344px;
   height: 200px;
   margin-right: 24px;
   border-radius: var(--radius-lg);
@@ -217,15 +235,18 @@
   transition: box-shadow 0.3s ease;
 }
 
-.marquee__card:hover {
+.hero-marquee__card:hover {
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.5),
                0 0 30px rgba(95, 201, 233, 0.25);
 }
 
-.marquee__card img {
+.hero-marquee__card img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 @keyframes marquee {
@@ -585,6 +606,44 @@
   font-size: 0.95rem;
 }
 
+.plan__credits {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.plan--selected {
+  border-color: #8ed8f5 !important;
+  box-shadow: 0 0 0 2px rgba(142, 216, 245, 0.4), 0 12px 32px rgba(95, 201, 233, 0.25);
+  transform: translateY(-2px);
+}
+
+.profile-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.ghost-button--danger {
+  color: #ff6b6b;
+}
+
+.ghost-button--danger:hover {
+  background: rgba(255, 107, 107, 0.1);
+  border-color: rgba(255, 107, 107, 0.3);
+}
+
+.payment-hint {
+  background: rgba(142, 216, 245, 0.1);
+  border: 1px solid rgba(142, 216, 245, 0.3);
+  border-radius: 12px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+  color: #8ed8f5;
+}
+
 .plan__features li::before {
   content: "✓";
   color: var(--accent);
@@ -679,6 +738,39 @@
   margin-bottom: 0;
 }
 
+.generated-showcase {
+  padding: 80px 0 96px;
+}
+
+.generated-showcase__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.generated-showcase__item {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.4);
+}
+
+.generated-showcase__item img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transition: transform 0.35s ease;
+}
+
+.generated-showcase__item:hover img {
+  transform: scale(1.04);
+}
+
 /* === Footer === */
 .footer {
   border-top: 1px solid var(--border);
@@ -698,9 +790,65 @@
 .footer__links {
   display: flex;
   gap: 24px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .footer__links a:hover { color: var(--accent); }
+
+.footer__legal {
+  width: 100%;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+/* === Legal pages (offer / privacy) === */
+.legal-page {
+  min-height: 100vh;
+  padding: 48px 0 80px;
+}
+
+.legal-page__inner {
+  max-width: 860px;
+}
+
+.legal-page__back {
+  display: inline-block;
+  margin-bottom: 24px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.legal-page__inner h1 {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  margin-bottom: 8px;
+}
+
+.legal-page__meta {
+  color: var(--text-muted);
+  margin-bottom: 32px;
+}
+
+.legal-page__body h2 {
+  font-size: 1.15rem;
+  margin: 28px 0 12px;
+}
+
+.legal-page__body p,
+.legal-page__body li {
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+.legal-page__body ul {
+  padding-left: 20px;
+  display: grid;
+  gap: 8px;
+}
 
 /* === Telegram Badge === */
 .tg-badge {
@@ -736,6 +884,9 @@
   background: linear-gradient(90deg, #9ee6ff 0%, #66d4ff 50%, #7fd6f5 100%);
   transform: translateY(-1px);
   color: #04101d;
+}
+.tg-badge--studio-mobile {
+  display: none;
 }
 .nav__right {
   display: flex;
@@ -950,12 +1101,37 @@
   font-size: 2rem;
 }
 
+/* === CTA Buttons === */
+.cta__buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.cta__buttons .btn {
+  width: 100%;
+  max-width: 320px;
+  height: 56px;
+  padding: 0 32px;
+  font-size: 1rem;
+}
+
+/* === Desktop Only === */
+@media (max-width: 880px) {
+  .desktop-only { display: none !important; }
+}
+
 /* === Responsive === */
 @media (max-width: 880px) {
   .nav__links { display: none; }
-  .nav__right { display: none; }
-  .marquee__card { flex-basis: 284px; height: 164px; }
+  .nav__right { display: flex; gap: 8px; }
+  .tg-badge { padding: 6px 12px; font-size: 0.8rem; }
+  .hero-marquee__card,
+  .examples-marquee__card { flex-basis: 284px; width: 284px; height: 164px; }
   .format-grid { grid-template-columns: 1fr; }
+  .generated-showcase__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .footer__inner { flex-direction: column; text-align: center; }
   .compare__handle { display: none; }
   .compare__pane--after { clip-path: inset(0); position: relative; }

@@ -1,10 +1,9 @@
 import { useMemo, useRef, useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { NavLink, Route, Routes, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 import { getProfile, createProfile } from './lib/profile'
 import {
-  albums as initialAlbums,
   generationHistory,
   profile,
   referencePreviews,
@@ -44,19 +43,50 @@ const urlToDataUrl = async (url) => {
     })
   }
 
+const TARGET_WIDTH = 1280
+const TARGET_HEIGHT = 720
+
+const resizeImageTo1280x720 = (imageUrl) =>
+  new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = TARGET_WIDTH
+      canvas.height = TARGET_HEIGHT
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        reject(new Error('Не удалось получить контекст canvas'))
+        return
+      }
+
+      // Cover-fit: scale to fill 1280x720, cropping any overflow
+      const scale = Math.max(TARGET_WIDTH / img.width, TARGET_HEIGHT / img.height)
+      const scaledWidth = img.width * scale
+      const scaledHeight = img.height * scale
+      const offsetX = (TARGET_WIDTH - scaledWidth) / 2
+      const offsetY = (TARGET_HEIGHT - scaledHeight) / 2
+
+      ctx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    img.onerror = () => reject(new Error('Не удалось загрузить изображение для ресайза'))
+    img.src = imageUrl
+  })
+
+
 const formatMeta = {
   '16x9': { label: 'YouTube 16:9', aspectRatio: '16:9' },
 }
 
 const buildNanoBananaPrompt = ({ referenceImage, selectedPhotoEntries, text, extraWishes, refSlots, previewFormat }) => {
-  const sourceEntries = selectedPhotoEntries.length
-    ? selectedPhotoEntries
-        .map(
-          (entry, index) =>
-            `${index + 1}. ${entry.albumName}: ${entry.description}\n- ${entry.url}`,
-        )
-        .join('\n\n')
-    : 'Не выбрано. Укажи хотя бы одно фото из альбома.'
+  const sourceEntries = (selectedPhotoEntries || [])
+    .map(
+      (entry, index) =>
+        `${index + 1}. ${entry.albumName}: ${entry.description}\n- ${entry.url}`,
+    )
+    .join('\n\n')
+  const hasSources = (selectedPhotoEntries || []).length > 0
 
   const formatInfo = formatMeta[previewFormat] || formatMeta['16x9']
   const refEntries = (refSlots || [])
@@ -64,13 +94,15 @@ const buildNanoBananaPrompt = ({ referenceImage, selectedPhotoEntries, text, ext
     .map((slot, index) => `${index + 1}. Референсное фото: ${slot.src}`)
     .join('\n')
 
-  return `Создай YouTube-превью в формате ${formatInfo.label}\n\nРеференсный стиль: ${referenceImage || 'Не выбрано'}. Старайся сделать максимально близко к оригиналу. Используй как направление по композиции, контрасту, динамике и общему вайбу.\n${refEntries ? `Референсные изображения:\n${refEntries}\n` : ''}\nИсходники:\n${sourceEntries}\n\nТекст на превью: ${text || 'Без текста'}. Сделай надпись крупной, легко читаемой и органично встроенной в композицию.\n\n${extraWishes || 'Дополнительные пожелания: сохрани баланс между текстом и изображением, не перегружай композицию, оставь сильный визуальный фокус на главном объекте.'}`
+  const sourcesBlock = hasSources
+    ? `Исходники:\n${sourceEntries}`
+    : 'Исходных фото нет — создай изображение полностью с нуля по текстовому описанию ниже.'
+
+  return `Создай YouTube-превью в формате ${formatInfo.label}\n\nРеференсный стиль: ${referenceImage || 'Не выбрано'}. Старайся сделать максимально близко к оригиналу. Используй как направление по композиции, контрасту, динамике и общему вайбу.\n${refEntries ? `Референсные изображения:\n${refEntries}\n` : ''}\n${sourcesBlock}\n\nТекст на превью: ${text || 'Без текста'}. Сделай надпись крупной, легко читаемой и органично встроенной в композицию.\n\n${extraWishes || 'Дополнительные пожелания: сохрани баланс между текстом и изображением, не перегружай композицию, оставь сильный визуальный фокус на главном объекте.'}`
 }
 
 const buildNanoBananaRequestPayload = ({ referenceImage, selectedPhotoEntries, text, extraWishes, refSlots, previewFormat }) => {
-  const sources = selectedPhotoEntries.length
-    ? selectedPhotoEntries
-    : [{ url: referenceImage || uploadPhotos[0], albumName: 'Fallback', description: 'Основной источник.' }]
+  const sources = selectedPhotoEntries || []
 
   const formatInfo = formatMeta[previewFormat] || formatMeta['16x9']
 
@@ -130,14 +162,6 @@ const dogAvatarSvgDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURICompone
   </svg>
 `)}`
 
-const navItems = [
-  { to: '/studio', label: 'Главная' },
-  { to: '/studio/photos', label: 'Мои фото' },
-  { to: '/studio/generations', label: 'Мои генерации' },
-  { to: '/studio/favorites', label: 'Избранное' },
-  { to: '/studio/presets', label: 'Прессеты' },
-  { to: '/studio/profile', label: 'Профиль' },
-]
 export function AuthScreen({ onAuthenticated, onClose, initialMode = 'login' }) {
   const [mode, setMode] = useState(initialMode)
   const [email, setEmail] = useState('')
@@ -145,48 +169,14 @@ export function AuthScreen({ onAuthenticated, onClose, initialMode = 'login' }) 
   const [code, setCode] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
+  const [resendCooldown, setResendCooldown] = useState(0)
 
-  const getLocalUsers = () => {
-    try { return JSON.parse(localStorage.getItem('previewforge-users') || '[]') } catch { return [] }
-  }
-  const setLocalUsers = (users) => localStorage.setItem('previewforge-users', JSON.stringify(users))
-
-  const localAuth = ({ loginMode }) => {
-    const users = getLocalUsers()
-    const emailKey = email.trim().toLowerCase()
-    if (loginMode === 'login') {
-      const user = users.find((u) => u.email.toLowerCase() === emailKey && u.password === password)
-      if (!user) throw new Error('Неверный email или пароль.')
-      localStorage.setItem('previewforge-current-user', JSON.stringify(user))
-      setMessage('Вход выполнен.')
-      onAuthenticated?.()
-      return
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000)
+      return () => clearTimeout(timer)
     }
-    if (loginMode === 'register') {
-      if (users.some((u) => u.email.toLowerCase() === emailKey)) {
-        throw new Error('Пользователь с таким email уже зарегистрирован.')
-      }
-      const newUser = { email: emailKey, password, name: emailKey.split('@')[0], credits: 2, plan: 'Старт' }
-      setLocalUsers([...users, newUser])
-      localStorage.setItem('previewforge-current-user', JSON.stringify(newUser))
-      setMessage('Регистрация успешна.')
-      onAuthenticated?.()
-      return
-    }
-    if (loginMode === 'reset') {
-      if (code.length !== 6) throw new Error('Введите 6-значный код из письма.')
-      const resetState = JSON.parse(localStorage.getItem('previewforge-reset') || '{}')
-      if (resetState.email?.toLowerCase() !== emailKey || resetState.code !== code) {
-        throw new Error('Неверный код подтверждения.')
-      }
-      const user = users.find((u) => u.email.toLowerCase() === emailKey)
-      if (!user) throw new Error('Пользователь не найден.')
-      localStorage.removeItem('previewforge-reset')
-      setMessage('Код подтверждён. Теперь можно войти в аккаунт.')
-      setMode('login')
-      return
-    }
-  }
+  }, [resendCooldown])
 
   const handleAuth = async (event) => {
     event.preventDefault()
@@ -194,56 +184,70 @@ export function AuthScreen({ onAuthenticated, onClose, initialMode = 'login' }) 
     setMessage('')
     try {
       if (mode === 'login') {
-        try {
-          const { error } = await supabase.auth.signInWithPassword({ email, password })
-          if (error) throw error
-          localStorage.setItem('previewforge-current-user', JSON.stringify({ email, name: email.split('@')[0] }))
-          setMessage('Вход выполнен.')
-          onAuthenticated?.()
-          return
-        } catch (error) {
-          console.error('Supabase login error, fallback to local:', error)
-          localAuth({ loginMode: 'login' })
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+        if (error) {
+          if (error.message.includes('Email not confirmed') || error.message.includes('email_not_confirmed')) {
+            setMessage('Email не подтверждён. Проверьте почту и перейдите по ссылке из письма.')
+            return
+          }
+          throw error
+        }
+        if (data.user && !data.user.email_confirmed_at) {
+          setMessage('Email не подтверждён. Проверьте почту и перейдите по ссылке из письма.')
           return
         }
+        localStorage.setItem('previewforge-current-user', JSON.stringify({ email, name: email.split('@')[0], id: data.user?.id }))
+        setMessage('Вход выполнен.')
+        onAuthenticated?.()
+        return
       }
       if (mode === 'register') {
-        try {
-          const { data, error } = await supabase.auth.signUp({ email, password })
-          if (error) throw error
-          const userId = data.user?.id
-          if (userId) {
-            try {
-              await createProfile({ userId, email, fullName: email.split('@')[0] })
-            } catch {
-              // ignore profile creation error
-            }
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: window.location.origin,
+          },
+        })
+        if (error) throw error
+        if (data.user) {
+          localStorage.setItem('previewforge-current-user', JSON.stringify({ email, name: email.split('@')[0], id: data.user?.id }))
+          if (data.session) {
+            setMessage('Регистрация успешна! Вы уже вошли.')
+            onAuthenticated?.()
+          } else {
+            setMessage('Регистрация создана! Проверьте почту и перейдите по ссылке для подтверждения email.')
+            setMode('login')
           }
-          localStorage.setItem('previewforge-current-user', JSON.stringify({ email, name: email.split('@')[0] }))
-          setMessage('Регистрация создана. Проверьте почту и подтвердите аккаунт.')
-          return
-        } catch (error) {
-          console.error('Supabase signup error, fallback to local:', error)
-          localAuth({ loginMode: 'register' })
-          return
         }
+        return
       }
       if (mode === 'reset') {
-        try {
-          if (code.length !== 6) throw new Error('Введите 6-значный код из письма.')
-          const { error } = await supabase.auth.verifyOtp({ email, token: code, type: 'email' })
-          if (error) throw error
-          setMessage('Код подтверждён. Теперь можно войти в аккаунт.')
-          setMode('login')
-          return
-        } catch (error) {
-          console.error('Supabase verifyOtp error, fallback to local:', error)
-          localAuth({ loginMode: 'reset' })
-          return
-        }
+        if (code.length !== 6) throw new Error('Введите 6-значный код из письма.')
+        const { error } = await supabase.auth.verifyOtp({ email, token: code, type: 'email' })
+        if (error) throw error
+        setMessage('Код подтверждён. Теперь можно войти в аккаунт.')
+        setMode('login')
+        return
       }
     } catch (error) {
       setMessage(error.message || 'Произошла ошибка.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleResendConfirmation = async () => {
+    if (!email) { setMessage('Укажите email для повторной отправки письма.'); return }
+    if (resendCooldown > 0) return
+    setLoading(true)
+    try {
+      const { error } = await supabase.auth.resend({ type: 'signup', email })
+      if (error) throw error
+      setMessage('Письмо с подтверждением отправлено повторно. Проверьте почту.')
+      setResendCooldown(60)
+    } catch (error) {
+      setMessage(error.message || 'Не удалось отправить письмо.')
     } finally {
       setLoading(false)
     }
@@ -253,19 +257,10 @@ export function AuthScreen({ onAuthenticated, onClose, initialMode = 'login' }) 
     if (!email) { setMessage('Сначала укажите email для сброса пароля.'); return }
     setLoading(true)
     try {
-      try {
-        const { error } = await supabase.auth.resetPasswordForEmail(email)
-        if (error) throw error
-        setMessage('Код сброса отправлен на почту. Введите 6 цифр ниже.')
-        setMode('reset')
-        return
-      } catch (error) {
-        console.error('Supabase resetPassword error, fallback to local:', error)
-        localStorage.setItem('previewforge-reset', JSON.stringify({ email: email.trim().toLowerCase(), code: '123456' }))
-        setMessage('Код для сброса сохранён локально: 123456. Введите его ниже.')
-        setMode('reset')
-        return
-      }
+      const { error } = await supabase.auth.resetPasswordForEmail(email)
+      if (error) throw error
+      setMessage('Код сброса отправлен на почту. Введите 6 цифр ниже.')
+      setMode('reset')
     } catch (error) {
       setMessage(error.message || 'Не удалось отправить код сброса.')
     } finally {
@@ -307,6 +302,11 @@ export function AuthScreen({ onAuthenticated, onClose, initialMode = 'login' }) 
           <button className="primary-button" type="submit" disabled={loading}>
             {loading ? 'Подождите...' : mode === 'login' ? 'Войти' : mode === 'register' ? 'Создать аккаунт' : 'Подтвердить код'}
           </button>
+          {mode === 'login' && (
+            <button type="button" className="link-button" onClick={handleResendConfirmation} disabled={loading || resendCooldown > 0}>
+              {resendCooldown > 0 ? `Повторить через ${resendCooldown}с` : 'Повторно отправить письмо с подтверждением'}
+            </button>
+          )}
           {mode !== 'reset' && (
             <button type="button" className="link-button" onClick={handleForgotPassword} disabled={loading}>Забыли пароль?</button>
           )}
@@ -317,12 +317,8 @@ export function AuthScreen({ onAuthenticated, onClose, initialMode = 'login' }) 
 }
 
 export default function Dashboard() {
-  const [albums, setAlbums] = useState(initialAlbums)
   const [, setPrompt] = useState(defaultPrompt)
   const [editorOpen, setEditorOpen] = useState(false)
-  const [albumForm, setAlbumForm] = useState({ name: '', description: '' })
-  const [albumEditingId, setAlbumEditingId] = useState(null)
-  const [albumDraftPhotos, setAlbumDraftPhotos] = useState([])
   const [selectedReference, setSelectedReference] = useState(null)
   const [selectedPhotoEntries, setSelectedPhotoEntries] = useState([])
   const [pickerType, setPickerType] = useState(null)
@@ -360,12 +356,17 @@ export default function Dashboard() {
 
   const loadSupabaseProfile = async (userId, email) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user && !session.user.email_confirmed_at) {
+        return
+      }
       let data = await getProfile(userId)
       if (!data) {
         data = await createProfile({ userId, email, fullName: email?.split('@')[0] })
       }
       if (data && !cancelled) {
         setProfileData(data)
+        setCurrentUser((prev) => ({ ...prev, id: userId, email, credits: data.credits, plan: data.plan }))
       }
     } catch {
       // ignore profile load error
@@ -378,7 +379,7 @@ export default function Dashboard() {
       try {
         const { data: { session } } = await supabase.auth.getSession()
         if (cancelled) return
-        if (session?.user) {
+        if (session?.user && session.user.email_confirmed_at) {
           setIsAuthenticated(true)
           setCurrentUser({ email: session.user.email, id: session.user.id })
           await loadSupabaseProfile(session.user.id, session.user.email)
@@ -404,7 +405,7 @@ export default function Dashboard() {
 
     try {
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
+        if (event === 'SIGNED_IN' && session?.user && session.user.email_confirmed_at) {
           setIsAuthenticated(true)
           setCurrentUser({ email: session.user.email, id: session.user.id })
           loadSupabaseProfile(session.user.id, session.user.email)
@@ -421,10 +422,14 @@ export default function Dashboard() {
   }, [])
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
+    try {
+      await supabase.auth.signOut()
+    } catch { /* ignore */ }
+    localStorage.removeItem('previewforge-current-user')
     setIsAuthenticated(false)
     setCurrentUser(null)
     setProfileData(null)
+    navigate('/')
   }
 
   const handleCustomReferenceUpload = async (event) => {
@@ -581,7 +586,7 @@ export default function Dashboard() {
       setSelectedReference({ id: presetItem.id, title: presetItem.title, preview: dataUrl })
       setPresetsOpen(false)
       refreshPrompt({ id: presetItem.id, title: presetItem.title, preview: dataUrl }, selectedPhotoEntries, previewText, extraWishes, refSlots, previewFormat)
-      navigate('/studio')
+      navigate('/studio/presets')
     } catch (error) {
       console.error('Failed to load preset image:', presetItem.preview, error)
     }
@@ -603,9 +608,16 @@ export default function Dashboard() {
       setAuthModalOpen(true)
       return
     }
-    const sourceEntries = selectedPhotoEntries.length
-      ? selectedPhotoEntries
-      : [{ url: selectedReference?.preview || uploadPhotos[0], albumName: 'Исходник', description: 'Главный визуальный источник.' }]
+    if ((displayProfile.credits ?? 0) <= 0) {
+      setGenerationError('Недостаточно кредитов. Приобретите тариф для продолжения.')
+      return
+    }
+    const sourceEntries = selectedPhotoEntries || []
+    const hasAnyVisualInput = sourceEntries.length > 0 || selectedReference?.preview || (refSlots || []).some((slot) => slot.filled && slot.src)
+    if (!hasAnyVisualInput && !previewText.trim() && !extraWishes.trim()) {
+      setGenerationError('Опишите, что сгенерировать: добавьте текст превью или пожелания, либо загрузите фото/референс.')
+      return
+    }
     const requestPayload = buildNanoBananaRequestPayload({
       referenceImage: selectedReference?.preview,
       selectedPhotoEntries: sourceEntries,
@@ -617,10 +629,19 @@ export default function Dashboard() {
     setIsGenerating(true)
     setGenerationError('')
     try {
+      const { data: userData, error: userError } = await supabase.rpc('consume_credit', { p_user_id: currentUser?.id })
+      if (userError) {
+        throw new Error('Недостаточно кредитов. Приобретите тариф для продолжения.')
+      }
+      setProfileData((prev) => prev ? { ...prev, credits: userData } : prev)
+
       const { data, error } = await supabase.functions.invoke('generate-preview', { body: { requestPayload, variants: 1 } })
       if (error) throw error
       if (!data?.images?.length) throw new Error('OpenRouter не вернул изображения.')
-      setGeneratedImages(data.images.map((url, index) => ({
+      const resizedImages = await Promise.all(
+        data.images.map((url) => resizeImageTo1280x720(url))
+      )
+      setGeneratedImages(resizedImages.map((url, index) => ({
         id: `${Date.now()}-${index}`,
         title: previewText || `Вариант ${index + 1}`,
         label: `Вариант ${index + 1}`,
@@ -640,6 +661,10 @@ export default function Dashboard() {
 
   const handleEditImage = async (image) => {
     if (!editPrompt.trim()) return
+    if ((displayProfile.credits ?? 0) <= 0) {
+      setGenerationError('Недостаточно кредитов. Приобретите тариф для продолжения.')
+      return
+    }
 
     const formatInfo = formatMeta['16x9']
     const requestPayload = {
@@ -655,12 +680,21 @@ export default function Dashboard() {
     setIsGenerating(true)
     setGenerationError('')
     try {
+      const { data: userData, error: userError } = await supabase.rpc('consume_credit', { p_user_id: currentUser?.id })
+      if (userError) {
+        throw new Error('Недостаточно кредитов. Приобретите тариф для продолжения.')
+      }
+      setProfileData((prev) => prev ? { ...prev, credits: userData } : prev)
+
       const { data, error } = await supabase.functions.invoke('generate-preview', {
         body: { requestPayload, variants: 1 }
       })
       if (error) throw error
       if (!data?.images?.length) throw new Error('OpenRouter не вернул изображения.')
-      setGeneratedImages(data.images.map((url, index) => ({
+      const resizedImages = await Promise.all(
+        data.images.map((url) => resizeImageTo1280x720(url))
+      )
+      setGeneratedImages(resizedImages.map((url, index) => ({
         id: `${Date.now()}-${index}`,
         title: editPrompt || `Вариант ${index + 1}`,
         label: `Вариант ${index + 1}`,
@@ -707,38 +741,6 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard-shell">
-      <aside className="sidebar">
-        <div className="brand-row">
-          <div className="logo-badge">S</div>
-          <div>
-            <div className="mini-label">Community</div>
-            <strong>PrewievGen</strong>
-          </div>
-        </div>
-        <nav className="nav">
-          {navItems.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.to === '/studio'} className={({ isActive }) => (isActive ? 'nav-item active' : 'nav-item')}>
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="profile-card">
-          <div className="profile-avatar"><img src={dogAvatarSvgDataUrl} alt={displayProfile.name} /></div>
-          <div>
-            <h3>{displayProfile.name}</h3>
-            <p>{displayProfile.email}</p>
-          </div>
-          <div className="profile-meta">
-            <span>{displayProfile.plan}</span>
-            <span>{displayProfile.credits} credits</span>
-          </div>
-        </div>
-        <button className="primary-button full-width" onClick={openEditor}>Создать новое превью</button>
-        {isAuthenticated && (
-          <button className="ghost-button full-width" onClick={handleSignOut} style={{ marginTop: 8 }}>Выйти из аккаунта</button>
-        )}
-      </aside>
-
       <main className="content-panel">
         <div className="content-top-bar">
           <button
@@ -752,158 +754,17 @@ export default function Dashboard() {
             </svg>
             <span>На главный экран</span>
           </button>
-          <NavLink to="/studio/profile" className="profile-top-btn" aria-label="Профиль">
+          <NavLink to="/profile" className="profile-top-btn" aria-label="Профиль">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="8" r="4" />
               <path d="M4 20c0-4 4-6 8-6s8 2 8 6" />
             </svg>
           </NavLink>
+          <a href="https://t.me/PreviewGen" className="tg-badge tg-badge--studio-mobile" target="_blank" rel="noopener noreferrer" aria-label="Telegram" style={{ display: 'none' }}>
+            <svg viewBox="0 0 1000 1000" width="18" height="18" fill="currentColor"><path transform="translate(-289.1496 -403.6047) scale(1.713884)" d="M226.328419,494.722069 C372.088573,431.216685 469.284839,389.350049 517.917216,369.122161 C656.772535,311.36743 685.625481,301.334815 704.431427,301.003532 C708.567621,300.93067 717.815839,301.955743 723.806446,306.816707 C728.864797,310.92121 730.256552,316.46581 730.922551,320.357329 C731.588551,324.248848 732.417879,333.113828 731.758626,340.040666 C724.234007,419.102486 691.675104,610.964674 675.110982,699.515267 C668.10208,736.984342 654.301336,749.547532 640.940618,750.777006 C611.904684,753.448938 589.856115,731.588035 561.733393,713.153237 C517.726886,684.306416 492.866009,666.349181 450.150074,638.200013 C400.78442,605.66878 432.786119,587.789048 460.919462,558.568563 C468.282091,550.921423 596.21508,434.556479 598.691227,424.000355 C599.00091,422.680135 599.288312,417.758981 596.36474,415.160431 C593.441168,412.561881 589.126229,413.450484 586.012448,414.157198 C581.598758,415.158943 511.297793,461.625274 375.109553,553.556189 C355.154858,567.258623 337.080515,573.934908 320.886524,573.585046 C303.033948,573.199351 268.692754,563.490928 243.163606,555.192408 C211.851067,545.013936 186.964484,539.632504 189.131547,522.346309 C190.260287,513.342589 202.659244,504.134509 226.328419,494.722069 Z" fill="currentColor"/></svg>
+          </a>
         </div>
-        <Routes>
-          <Route path="/" element={
-            <section>
-              <div className="panel-header"><div><span className="mini-label">Главная</span><h2>Плитка превью-референсов</h2></div></div>
-              <div className="grid-cards reference-grid">
-                {referencePreviews.map((item) => (
-                  <article key={item.id} className="preview-card">
-                    <img src={item.preview} alt={item.title} />
-                    <div className="card-body"><h3>{item.title}</h3><p>{item.description}</p></div>
-                  </article>
-                ))}
-              </div>
-            </section>
-          } />
-          <Route path="/photos" element={
-            <section>
-              <div className="panel-header"><div><span className="mini-label">Мои фото</span><h2>Загруженные исходники</h2></div></div>
-              <div className="album-form-wrap">
-                <div className="album-form">
-                  <h3>{albumEditingId ? 'Редактировать альбом' : 'Создать альбом'}</h3>
-                  <input type="text" placeholder="Название альбома" value={albumForm.name} onChange={(event) => setAlbumForm((current) => ({ ...current, name: event.target.value }))} />
-                  <textarea placeholder="Описание альбома" rows={4} value={albumForm.description} onChange={(event) => setAlbumForm((current) => ({ ...current, description: event.target.value }))} />
-                  <div className="upload-row">
-                    <input ref={inputRef} type="file" multiple accept="image/*" onChange={handleAddPhotos} />
-                    <button type="button" className="secondary-button" onClick={() => inputRef.current?.click()}>Добавить фото</button>
-                  </div>
-                  <div className="album-preview-photos">
-                    {albumDraftPhotos.length === 0 ? <p>Фотографии ещё не добавлены.</p> : albumDraftPhotos.map((image, index) => <img key={`${image}-${index}`} src={image} alt={`Draft ${index + 1}`} />)}
-                  </div>
-                  <div className="album-actions">
-                    <button className="primary-button" type="button" onClick={albumEditingId ? handleUpdateAlbum : handleCreateAlbum}>
-                      {albumEditingId ? 'Сохранить изменения' : 'Создать альбом'}
-                    </button>
-                    {albumEditingId && (
-                      <button className="ghost-button" type="button" onClick={() => { setAlbumEditingId(null); setAlbumForm({ name: '', description: '' }); setAlbumDraftPhotos([]) }}>Отмена</button>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="album-list">
-                {albums.map((album) => (
-                  <div key={album.id} className="album-card">
-                    <img src={album.cover} alt={album.name} />
-                    <div>
-                      <h3>{album.name}</h3>
-                      <p>{album.description}</p>
-                      <div className="album-meta-row">
-                        <span>{album.count} фото</span>
-                        <button type="button" onClick={() => startEditAlbum(album)}>Редактировать</button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="photo-strip">
-                {uploadPhotos.map((image, index) => (
-                  <div key={`${image}-${index}`} className="photo-item"><img src={image} alt={`Фото ${index + 1}`} /></div>
-                ))}
-              </div>
-            </section>
-          } />
-          <Route path="/generations" element={
-            <section>
-              <div className="panel-header"><div><span className="mini-label">Мои генерации</span><h2>Созданные превью</h2></div></div>
-              <div className="grid-cards generation-grid">
-                {generationHistory.map((item) => (
-                  <article key={item.id} className="generation-card">
-                    <img src={item.image} alt={item.title} />
-                    <div className="card-body"><h3>{item.title}</h3><p>{item.createdAt}</p></div>
-                  </article>
-                ))}
-              </div>
-            </section>
-          } />
-          <Route path="/favorites" element={
-            <section>
-              <div className="panel-header"><div><span className="mini-label">Избранное</span><h2>Любимые превью</h2></div></div>
-              <div className="grid-cards generation-grid">
-                {favoriteGenerations.map((item) => (
-                  <article key={item.id} className="generation-card">
-                    <img src={item.image} alt={item.title} />
-                    <div className="card-body"><h3>{item.title}</h3><p>{item.createdAt}</p></div>
-                  </article>
-                ))}
-              </div>
-            </section>
-          } />
-          <Route path="/presets" element={
-            <section>
-              <div className="panel-header"><div><span className="mini-label">Прессеты</span><h2>Шаблоны обложек</h2></div></div>
-              <div className="picker-grid">
-                {referencePreviews.filter((item) => item.isPreset).map((item) => (
-                  <button key={item.id} type="button" className="picker-option-card" onClick={() => { handleReferenceChange(item); navigate('/studio') }}>
-                    <img src={item.preview} alt={item.title} /><span>{item.title}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          } />
-          <Route path="/profile" element={
-            <section>
-              <div className="panel-header"><div><span className="mini-label">Профиль</span><h2>Аккаунт</h2></div></div>
-              <div className="profile-block">
-                <div className="profile-card">
-                  <div className="profile-card__avatar">
-                    <span>{displayProfile.name.split(' ').map((n) => n[0]).join('')}</span>
-                  </div>
-                  <div className="profile-card__info">
-                    <h3>{displayProfile.name}</h3>
-                    <p>{displayProfile.email}</p>
-                  </div>
-                </div>
-                <div className="profile-stats">
-                  <div className="profile-stat">
-                    <span className="profile-stat__value">{displayProfile.credits}</span>
-                    <span className="profile-stat__label">Токенов</span>
-                  </div>
-                  <div className="profile-stat">
-                    <span className="profile-stat__value">{displayProfile.plan}</span>
-                    <span className="profile-stat__label">Тариф</span>
-                  </div>
-                  <div className="profile-stat">
-                    <span className="profile-stat__value">{currentUser?.id ? currentUser.id.slice(0, 8) : '—'}</span>
-                    <span className="profile-stat__label">ID</span>
-                  </div>
-                  <div className="profile-stat">
-                    <span className="profile-stat__value">{profileData?.created_at ? new Date(profileData.created_at).toLocaleDateString('ru-RU') : '—'}</span>
-                    <span className="profile-stat__label">Регистрация</span>
-                  </div>
-                </div>
-                {isAuthenticated && (
-                  <div className="profile-section">
-                    <button className="ghost-button" type="button" onClick={handleSignOut}>Выйти из аккаунта</button>
-                  </div>
-                )}
-                <div className="profile-section">
-                  <h3>История операций</h3>
-                  <div className="profile-empty">
-                    <p>Платёжная система не подключена. История появится после интеграции.</p>
-                  </div>
-                </div>
-              </div>
-            </section>
-          } />
-        </Routes>
+
       </main>
 
       <div className="editor-overlay" style={{ display: editorOpen ? 'flex' : 'none' }}>
@@ -918,14 +779,14 @@ export default function Dashboard() {
                 <div className="field-block">
                   <div className="field-label-row">
                     <label>Промпт для обложки</label>
-                    <span className="char-counter">{previewText.length} / 512</span>
+                    <span className="char-counter">{previewText.length} / 1024</span>
                   </div>
                   <div className="prompt-textarea-wrapper">
                     <textarea
                       className="prompt-textarea"
                       value={previewText}
                       onChange={handleTextChange}
-                      maxLength={512}
+                      maxLength={1024}
                       rows={4}
                     />
                     {!previewText && (

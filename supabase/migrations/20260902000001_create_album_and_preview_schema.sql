@@ -58,44 +58,52 @@ alter table public.albums enable row level security;
 alter table public.album_photos enable row level security;
 alter table public.preview_generations enable row level security;
 
-create policy if not exists "Profiles are viewable by owner"
+drop policy if exists "Profiles are viewable by owner" on public.profiles;
+create policy "Profiles are viewable by owner"
     on public.profiles
     for select
     using (auth.uid() = id);
 
-create policy if not exists "Users can insert own profile"
+drop policy if exists "Users can insert own profile" on public.profiles;
+create policy "Users can insert own profile"
     on public.profiles
     for insert
     with check (auth.uid() = id);
 
-create policy if not exists "Users can update own profile"
+drop policy if exists "Users can update own profile" on public.profiles;
+create policy "Users can update own profile"
     on public.profiles
     for update
     using (auth.uid() = id)
     with check (auth.uid() = id);
 
-create policy if not exists "Users can view own albums"
+drop policy if exists "Users can view own albums" on public.albums;
+create policy "Users can view own albums"
     on public.albums
     for select
     using (auth.uid() = user_id);
 
-create policy if not exists "Users can insert own albums"
+drop policy if exists "Users can insert own albums" on public.albums;
+create policy "Users can insert own albums"
     on public.albums
     for insert
     with check (auth.uid() = user_id);
 
-create policy if not exists "Users can update own albums"
+drop policy if exists "Users can update own albums" on public.albums;
+create policy "Users can update own albums"
     on public.albums
     for update
     using (auth.uid() = user_id)
     with check (auth.uid() = user_id);
 
-create policy if not exists "Users can delete own albums"
+drop policy if exists "Users can delete own albums" on public.albums;
+create policy "Users can delete own albums"
     on public.albums
     for delete
     using (auth.uid() = user_id);
 
-create policy if not exists "Users can view own album photos"
+drop policy if exists "Users can view own album photos" on public.album_photos;
+create policy "Users can view own album photos"
     on public.album_photos
     for select
     using (exists (
@@ -105,7 +113,8 @@ create policy if not exists "Users can view own album photos"
           and a.user_id = auth.uid()
     ));
 
-create policy if not exists "Users can insert own album photos"
+drop policy if exists "Users can insert own album photos" on public.album_photos;
+create policy "Users can insert own album photos"
     on public.album_photos
     for insert
     with check (exists (
@@ -115,7 +124,8 @@ create policy if not exists "Users can insert own album photos"
           and a.user_id = auth.uid()
     ));
 
-create policy if not exists "Users can delete own album photos"
+drop policy if exists "Users can delete own album photos" on public.album_photos;
+create policy "Users can delete own album photos"
     on public.album_photos
     for delete
     using (exists (
@@ -125,23 +135,27 @@ create policy if not exists "Users can delete own album photos"
           and a.user_id = auth.uid()
     ));
 
-create policy if not exists "Users can view own preview generations"
+drop policy if exists "Users can view own preview generations" on public.preview_generations;
+create policy "Users can view own preview generations"
     on public.preview_generations
     for select
     using (auth.uid() = user_id);
 
-create policy if not exists "Users can insert own preview generations"
+drop policy if exists "Users can insert own preview generations" on public.preview_generations;
+create policy "Users can insert own preview generations"
     on public.preview_generations
     for insert
     with check (auth.uid() = user_id);
 
-create policy if not exists "Users can update own preview generations"
+drop policy if exists "Users can update own preview generations" on public.preview_generations;
+create policy "Users can update own preview generations"
     on public.preview_generations
     for update
     using (auth.uid() = user_id)
     with check (auth.uid() = user_id);
 
-create policy if not exists "Users can delete own preview generations"
+drop policy if exists "Users can delete own preview generations" on public.preview_generations;
+create policy "Users can delete own preview generations"
     on public.preview_generations
     for delete
     using (auth.uid() = user_id);
@@ -154,16 +168,19 @@ begin
 end;
 $$ language plpgsql;
 
+drop trigger if exists set_updated_at_profiles on public.profiles;
 create trigger set_updated_at_profiles
     before update on public.profiles
     for each row
     execute function public.set_updated_at();
 
+drop trigger if exists set_updated_at_albums on public.albums;
 create trigger set_updated_at_albums
     before update on public.albums
     for each row
     execute function public.set_updated_at();
 
+drop trigger if exists set_updated_at_preview_generations on public.preview_generations;
 create trigger set_updated_at_preview_generations
     before update on public.preview_generations
     for each row

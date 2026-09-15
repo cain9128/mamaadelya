@@ -1,73 +1,89 @@
 export const referencePreviews = [
   {
     id: 'ref-1',
-    title: 'Стартовый фрейм',
-    description: 'Темный фон, крупный заголовок и яркая акцентная кнопка.',
-    preview: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=900&q=80',
+    title: 'Референс 1',
+    description: 'Новый визуальный стиль для создания YouTube-превью.',
+    preview: '/forsite/img-1.jpg',
   },
   {
     id: 'ref-2',
-    title: 'Технологии',
-    description: 'Синий акцент, минималистичная композиция, высококонтрастный текст.',
-    preview: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=900&q=80',
+    title: 'Референс 2',
+    description: 'Новый визуальный стиль для создания YouTube-превью.',
+    preview: '/forsite/img-2.jpg',
   },
   {
     id: 'ref-3',
-    title: 'Бизнес-обзор',
-    description: 'Заголовки в левой части, карточки с метриками справа.',
-    preview: 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=900&q=80',
+    title: 'Референс 3',
+    description: 'Новый визуальный стиль для создания YouTube-превью.',
+    preview: '/forsite/img-3.jpg',
   },
   {
     id: 'ref-4',
-    title: 'Создание контента',
-    description: 'Теплые цвета и крупные объекты для ускорения внимания.',
-    preview: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=900&q=80',
+    title: 'Референс 4',
+    description: 'Новый визуальный стиль для создания YouTube-превью.',
+    preview: '/forsite/img-4.jpg',
+  },
+  {
+    id: 'ref-5',
+    title: 'Референс 5',
+    description: 'Новый визуальный стиль для создания YouTube-превью.',
+    preview: '/forsite/img-5.jpg',
+  },
+  {
+    id: 'ref-6',
+    title: 'Референс 6',
+    description: 'Новый визуальный стиль для создания YouTube-превью.',
+    preview: '/forsite/img-6.jpg',
+  },
+  {
+    id: 'ref-7',
+    title: 'Референс 7',
+    description: 'Новый визуальный стиль для создания YouTube-превью.',
+    preview: '/forsite/img-7.jpg',
+  },
+  {
+    id: 'ref-8',
+    title: 'Референс 8',
+    description: 'Новый визуальный стиль для создания YouTube-превью.',
+    preview: '/forsite/img-8.jpg',
+  },
+  {
+    id: 'ref-9',
+    title: 'Референс 9',
+    description: 'Новый визуальный стиль для создания YouTube-превью.',
+    preview: '/forsite/img-9.jpg',
+  },
+  {
+    id: 'ref-10',
+    title: 'Референс 10',
+    description: 'Новый визуальный стиль для создания YouTube-превью.',
+    preview: '/forsite/img-10.jpg',
+  },
+  {
+    id: 'ref-11',
+    title: 'Референс 11',
+    description: 'Новый визуальный стиль для создания YouTube-превью.',
+    preview: '/forsite/img-11.jpg',
   },
 ]
 
-export const albums = [
-  {
-    id: 'album-1',
-    name: 'Travel Days',
-    description:
-      'Путешествия с кинематографической перспективой, тёплые цвета, отпускные виды, сильный эмоциональный акцент.',
-    count: 8,
-    cover:
-      'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=900&q=80',
-    photos: [
-      'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=900&q=80',
-      'https://images.unsplash.com/photo-1493246507139-91e8fad9978e?auto=format&fit=crop&w=900&q=80',
-      'https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=900&q=80',
-    ],
-  },
-  {
-    id: 'album-2',
-    name: 'Gaming Setup',
-    description:
-      'Тёмный игровой интерьер, акцент на экране, динамичная атмосфера, выразительные контрастные цвета.',
-    count: 5,
-    cover:
-      'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=900&q=80',
-    photos: [
-      'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=900&q=80',
-      'https://images.unsplash.com/photo-1516321165247-4aa89a48be28?auto=format&fit=crop&w=900&q=80',
-      'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=900&q=80',
-    ],
-  },
-  {
-    id: 'album-3',
-    name: 'Product Shots',
-    description:
-      'Видеокамера, минимализм, акцент на визуальных деталях, чистый коммерческий стиль для YouTube.',
-    count: 11,
-    cover:
-      'https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=900&q=80',
-    photos: [
-      'https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=900&q=80',
-      'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=900&q=80',
-      'https://images.unsplash.com/photo-1493246507139-91e8fad9978e?auto=format&fit=crop&w=900&q=80',
-    ],
-  },
+export const presetsList = [
+  { id: 'preset-1', title: 'Прессет 1', preview: '/presets/preset-1.jpg' },
+  { id: 'preset-2', title: 'Прессет 2', preview: '/presets/preset-2.jpg' },
+  { id: 'preset-3', title: 'Прессет 3', preview: '/presets/preset-3.jpg' },
+  { id: 'preset-4', title: 'Прессет 4', preview: '/presets/preset-4.jpg' },
+  { id: 'preset-5', title: 'Прессет 5', preview: '/presets/preset-5.jpg' },
+  { id: 'preset-6', title: 'Прессет 6', preview: '/presets/preset-6.jpg' },
+  { id: 'preset-7', title: 'Прессет 7', preview: '/presets/preset-7.jpg' },
+  { id: 'preset-8', title: 'Прессет 8', preview: '/presets/preset-8.jpg' },
+  { id: 'preset-9', title: 'Прессет 9', preview: '/presets/preset-9.jpg' },
+  { id: 'preset-10', title: 'Прессет 10', preview: '/presets/preset-10.jpg' },
+  { id: 'preset-11', title: 'Прессет 11', preview: '/presets/preset-11.jpg' },
+  { id: 'preset-12', title: 'Прессет 12', preview: '/presets/preset-12.jpg' },
+  { id: 'preset-13', title: 'Прессет 13', preview: '/presets/preset-13.jpg' },
+  { id: 'preset-14', title: 'Прессет 14', preview: '/presets/preset-14.jpg' },
+  { id: 'preset-15', title: 'Прессет 15', preview: '/presets/preset-15.jpg' },
+  { id: 'preset-16', title: 'Прессет 16', preview: '/presets/preset-16.jpg' },
 ]
 
 export const uploadPhotos = [
@@ -105,8 +121,8 @@ export const generationHistory = [
 ]
 
 export const profile = {
-  name: 'Иван Петров',
-  email: 'ivan@example.com',
+  name: 'Денис ЛГБТ',
+  email: '0points0@.com',
   plan: 'Pro',
   credits: 18,
 }

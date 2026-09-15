@@ -3,25 +3,93 @@ import { BrowserRouter, Route, Routes, Link, useNavigate } from 'react-router-do
 import Dashboard, { AuthScreen } from './Dashboard'
 import ProfilePage from './ProfilePage'
 import { TransitionProvider, TransitionLink } from './Transition'
-import { referencePreviews } from './lib/mockData'
+import { OfferPage, PrivacyPage } from './LegalPages'
+import { LEGAL } from './lib/legal'
 import './App.css'
 import './Dashboard.css'
 
+// Верхняя лента: /forsite/img-*. Не менять.
 const heroPreviews = [
   '/forsite/img-1.jpg',
   '/forsite/img-2.jpg',
   '/forsite/img-3.jpg',
   '/forsite/img-4.jpg',
-  '/forsite/variant-1-8.png',
-  '/forsite/tg_image_613287012.jpeg',
+  '/forsite/img-5.jpg',
+  '/forsite/img-6.jpg',
+  '/forsite/img-7.jpg',
+  '/forsite/img-8.jpg',
+  '/forsite/img-9.jpg',
+  '/forsite/img-10.jpg',
+  '/forsite/img-11.jpg',
 ]
+
+// Нижняя лента под «Примеры генераций»: только /forsite-copy/* (из «forsite копия»).
+// Независимый набор файлов, независимая анимация.
+const examplesPreviews = [
+  '/forsite-copy/copy-1.jpg',
+  '/forsite-copy/copy-2.jpg',
+  '/forsite-copy/copy-3.jpg',
+  '/forsite-copy/copy-4.jpg',
+  '/forsite-copy/copy-5.jpg',
+  '/forsite-copy/copy-6.jpg',
+  '/forsite-copy/copy-7.jpg',
+  '/forsite-copy/copy-8.jpg',
+  '/forsite-copy/copy-9.jpg',
+  '/forsite-copy/copy-10.jpg',
+  '/forsite-copy/copy-11.jpg',
+]
+
+const generatedExamples = examplesPreviews.slice(0, 10)
+
+function HeroMarquee() {
+  // Верхняя лента: только /forsite/img-*, своя разметка и своя анимация hero-scroll.
+  // Две идентичные половины внутри одного трека, сдвиг ровно на половину — бесшовный круг.
+  const half = [...heroPreviews, ...heroPreviews]
+  return (
+    <div className="hero-marquee">
+      <div className="hero-marquee__track">
+        {[0, 1].map((halfIndex) => (
+          <div key={halfIndex} className="hero-marquee__half" aria-hidden={halfIndex === 1}>
+            {half.map((src) => (
+              <div key={`${halfIndex}-${src}`} className="hero-marquee__card">
+                <img src={src} alt="" decoding="async" draggable={false} />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ExamplesMarquee() {
+  // Нижняя лента под «Примеры генераций»: только /forsite-copy/* (из «forsite копия»),
+  // своя разметка и своя анимация examples-scroll. С верхней никак не связана.
+  const half = [...examplesPreviews, ...examplesPreviews]
+  return (
+    <div className="examples-marquee">
+      <div className="examples-marquee__track">
+        {[0, 1].map((halfIndex) => (
+          <div key={halfIndex} className="examples-marquee__half" aria-hidden={halfIndex === 1}>
+            {half.map((src) => (
+              <div key={`${halfIndex}-${src}`} className="examples-marquee__card">
+                <img src={src} alt="" decoding="async" draggable={false} />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 
 const plans = [
-  { name: 'Старт', price: '0', period: '/ навсегда', features: ['2 бесплатные генерации при регистрации', 'Базовые стили', 'Скачивание в PNG'], featured: false, cta: 'Начать бесплатно' },
-  { name: 'Креатор', price: '890', period: '/ месяц', features: ['14 генераций (токенов)', 'Все стили и пресеты', 'Загрузка референсов', 'PNG + WebP экспорт'], featured: false, cta: 'Попробовать' },
-  { name: 'Блогер', price: '1390', period: '/ месяц', features: ['24 генерации (токенов)', 'Все стили и пресеты', 'Загрузка референсов', 'PNG + WebP экспорт'], featured: true, cta: 'Попробовать' },
-  { name: 'Студия УЛЬТРАВЫГОДА', price: '2550', period: '/ месяц', features: ['60 генераций (токенов)', 'Все стили и пресеты', 'Загрузка референсов', 'PNG + WebP экспорт'], featured: false, cta: 'Попробовать' },
+  { id: 'start', name: 'Старт', price: 0, credits: 2, period: '/ навсегда', features: ['2 бесплатные генерации при регистрации', 'Базовые стили', 'Скачивание в PNG'], featured: false, cta: 'Начать бесплатно' },
+  { id: 'test', name: 'Тест', price: 10, credits: 1, period: 'разово', features: ['1 генерация', 'Быстрая проверка оплаты', 'Все стили'], featured: false, cta: 'Купить' },
+  { id: 'creator', name: 'Креатор', price: 890, credits: 14, period: '/ месяц', features: ['14 генераций (токенов)', 'Все стили и пресеты', 'Загрузка референсов', 'PNG + WebP экспорт'], featured: false, cta: 'Купить' },
+  { id: 'blogger', name: 'Блогер', price: 1390, credits: 24, period: '/ месяц', features: ['24 генерации (токенов)', 'Все стили и пресеты', 'Загрузка референсов', 'PNG + WebP экспорт'], featured: true, cta: 'Купить' },
+  { id: 'studio', name: 'Студия УЛЬТРАВЫГОДА', price: 2550, credits: 60, period: '/ месяц', features: ['60 генераций (токенов)', 'Все стили и пресеты', 'Загрузка референсов', 'PNG + WebP экспорт'], featured: false, cta: 'Купить' },
 ]
 
 function CompareSlider({ before, after, alt }) {
@@ -65,6 +133,7 @@ function CompareSlider({ before, after, alt }) {
 
 function Landing() {
   const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [pendingPlanId, setPendingPlanId] = useState(null)
   const navigate = useNavigate()
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     try { return !!localStorage.getItem('previewforge-current-user') } catch { return false }
@@ -78,6 +147,40 @@ function Landing() {
     }, 1000)
     return () => clearInterval(interval)
   }, [])
+
+  const handlePlanClick = (planId, event) => {
+    event.preventDefault()
+    event.stopPropagation()
+    if (planId === 'start') {
+      // Free plan - go to studio if authenticated, otherwise auth first
+      if (isAuthenticated) {
+        navigate('/studio')
+      } else {
+        setPendingPlanId(null)
+        setAuthModalOpen(true)
+      }
+      return
+    }
+    if (isAuthenticated) {
+      // Already authenticated - go to profile with pending plan
+      localStorage.setItem('previewforge-pending-plan', planId)
+      navigate('/profile')
+    } else {
+      // Not authenticated - save plan and open auth
+      setPendingPlanId(planId)
+      localStorage.setItem('previewforge-pending-plan', planId)
+      setAuthModalOpen(true)
+    }
+  }
+
+  const handleAuthSuccess = () => {
+    setAuthModalOpen(false)
+    const savedPlan = localStorage.getItem('previewforge-pending-plan')
+    if (savedPlan) {
+      localStorage.removeItem('previewforge-pending-plan')
+      navigate('/profile')
+    }
+  }
 
   return (
     <div>
@@ -95,27 +198,20 @@ function Landing() {
             <a href="#pricing">Тарифы</a>
           </nav>
           <div className="nav__right">
-            <a href="https://t.me/PreviewGen" className="tg-badge" target="_blank" rel="noopener noreferrer" aria-label="Telegram">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0h-.056zm4.962 7.224c-.2 1.05-.788 1.482-1.338 1.545l-3.259.464s-1.303.172-2.606-.264c0 0-.49-.15-.49-1.05 0-.9.724-1.17.724-1.17l3.464-.49s1.506-.207 2.507 1.05c.5.75.5 1.5.5 1.5s.464 1.95-.464 2.85c-.928.9-2.85.9-2.85.9l-3.464.49s-1.05.15-1.656-.3c-.606-.45-1.05-1.2-.464-1.95.586-.75 2.408-1.05 2.408-1.05l3.464-.49s.928-.15.928-1.2c0-1.05-.928-1.05-.928-1.05s-.928 0-1.506.45c-.578.45-1.05.9-1.05 1.95 0 1.05.464 1.5.464 1.5l-1.506 1.95s-.464.6.464 1.05c.928.45 2.408 0 2.408 0l3.464-.49s1.506-.15 1.962-1.05c.464-.9.464-1.5.464-1.5s0-1.5-.464-1.95c-.464-.45-1.506-.45-1.506-.45l-3.464.49s-1.506.15-1.962-.45c-.464-.6 0-1.05 0-1.05l1.962-2.4s.464-.6 1.506-.45c1.05.15 1.506.6 1.506.6l.928 1.5s.464.6 0 1.2c-.464.6-1.506.9-1.506.9z"/></svg>
+            <a href="https://t.me/PreviewGen" className="tg-badge desktop-only" target="_blank" rel="noopener noreferrer" aria-label="Telegram">
+              <svg viewBox="0 0 1000 1000" width="18" height="18" fill="currentColor"><path transform="translate(-289.1496 -403.6047) scale(1.713884)" d="M226.328419,494.722069 C372.088573,431.216685 469.284839,389.350049 517.917216,369.122161 C656.772535,311.36743 685.625481,301.334815 704.431427,301.003532 C708.567621,300.93067 717.815839,301.955743 723.806446,306.816707 C728.864797,310.92121 730.256552,316.46581 730.922551,320.357329 C731.588551,324.248848 732.417879,333.113828 731.758626,340.040666 C724.234007,419.102486 691.675104,610.964674 675.110982,699.515267 C668.10208,736.984342 654.301336,749.547532 640.940618,750.777006 C611.904684,753.448938 589.856115,731.588035 561.733393,713.153237 C517.726886,684.306416 492.866009,666.349181 450.150074,638.200013 C400.78442,605.66878 432.786119,587.789048 460.919462,558.568563 C468.282091,550.921423 596.21508,434.556479 598.691227,424.000355 C599.00091,422.680135 599.288312,417.758981 596.36474,415.160431 C593.441168,412.561881 589.126229,413.450484 586.012448,414.157198 C581.598758,415.158943 511.297793,461.625274 375.109553,553.556189 C355.154858,567.258623 337.080515,573.934908 320.886524,573.585046 C303.033948,573.199351 268.692754,563.490928 243.163606,555.192408 C211.851067,545.013936 186.964484,539.632504 189.131547,522.346309 C190.260287,513.342589 202.659244,504.134509 226.328419,494.722069 Z" fill="currentColor"/></svg>
               <span>Мы в Telegram</span>
             </a>
-            {isAuthenticated ? (
-              <>
-                <button type="button" className="tg-badge tg-badge--login" onClick={() => navigate('/profile')} aria-label="Профиль">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                  <span>Профиль</span>
-                </button>
-                <button type="button" className="tg-badge tg-badge--login" onClick={() => navigate('/studio')} aria-label="Студия">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-                  <span>Студия</span>
-                </button>
-              </>
-            ) : (
-              <button type="button" className="tg-badge tg-badge--login" onClick={() => setAuthModalOpen(true)} aria-label="Войти">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-                <span>Войти</span>
+            {isAuthenticated && (
+              <button type="button" className="tg-badge tg-badge--login desktop-only" onClick={() => navigate('/studio')} aria-label="Студия">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                <span>Студия</span>
               </button>
             )}
+            <button type="button" className="tg-badge tg-badge--login" onClick={() => isAuthenticated ? navigate('/profile') : setAuthModalOpen(true)} aria-label={isAuthenticated ? "Профиль" : "Войти"}>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span>{isAuthenticated ? "Профиль" : "Войти"}</span>
+            </button>
           </div>
         </div>
       </header>
@@ -180,6 +276,7 @@ function Landing() {
               ))}
             </div>
           </div>
+          <ExamplesMarquee />
         </section>
 
         <section className="container section" id="pricing">
@@ -196,7 +293,13 @@ function Landing() {
                 <ul className="plan__features">
                   {plan.features.map((f) => <li key={f}>{f}</li>)}
                 </ul>
-                <TransitionLink to="/studio" className={`btn ${plan.featured ? 'btn--accent' : 'btn--ghost'}`} onClick={(event) => { event.preventDefault(); event.stopPropagation(); setAuthModalOpen(true); return false; }}>{plan.cta}</TransitionLink>
+                <button
+                  type="button"
+                  className={`btn ${plan.featured ? 'btn--accent' : 'btn--ghost'}`}
+                  onClick={(event) => handlePlanClick(plan.id, event)}
+                >
+                  {plan.cta}
+                </button>
               </div>
             ))}
           </div>
@@ -206,7 +309,17 @@ function Landing() {
           <div className="cta__box">
             <h2 className="cta__title">Начать генерировать</h2>
             <p className="cta__text">Загрузите фото, выберите референс и получите готовые превью за секунды.</p>
-            <TransitionLink to="/studio" className="btn btn--primary" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setAuthModalOpen(true); return false; }}>Открыть студию</TransitionLink>
+            <div className="cta__buttons">
+              <TransitionLink to="/studio" className="btn btn--primary" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setAuthModalOpen(true); return false; }}>Открыть студию</TransitionLink>
+              <button type="button" className="btn btn--primary" onClick={() => isAuthenticated ? navigate('/profile') : setAuthModalOpen(true)}>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span>Профиль</span>
+              </button>
+              <a href="https://t.me/PreviewGen" className="btn btn--primary" target="_blank" rel="noopener noreferrer">
+                <svg viewBox="0 0 1000 1000" width="18" height="18" fill="currentColor"><path transform="translate(-289.1496 -403.6047) scale(1.713884)" d="M226.328419,494.722069 C372.088573,431.216685 469.284839,389.350049 517.917216,369.122161 C656.772535,311.36743 685.625481,301.334815 704.431427,301.003532 C708.567621,300.93067 717.815839,301.955743 723.806446,306.816707 C728.864797,310.92121 730.256552,316.46581 730.922551,320.357329 C731.588551,324.248848 732.417879,333.113828 731.758626,340.040666 C724.234007,419.102486 691.675104,610.964674 675.110982,699.515267 C668.10208,736.984342 654.301336,749.547532 640.940618,750.777006 C611.904684,753.448938 589.856115,731.588035 561.733393,713.153237 C517.726886,684.306416 492.866009,666.349181 450.150074,638.200013 C400.78442,605.66878 432.786119,587.789048 460.919462,558.568563 C468.282091,550.921423 596.21508,434.556479 598.691227,424.000355 C599.00091,422.680135 599.288312,417.758981 596.36474,415.160431 C593.441168,412.561881 589.126229,413.450484 586.012448,414.157198 C581.598758,415.158943 511.297793,461.625274 375.109553,553.556189 C355.154858,567.258623 337.080515,573.934908 320.886524,573.585046 C303.033948,573.199351 268.692754,563.490928 243.163606,555.192408 C211.851067,545.013936 186.964484,539.632504 189.131547,522.346309 C190.260287,513.342589 202.659244,504.134509 226.328419,494.722069 Z" fill="currentColor"/></svg>
+                <span>Мы в Telegram</span>
+              </a>
+            </div>
           </div>
         </section>
 
@@ -238,6 +351,22 @@ function Landing() {
           </div>
         </section>
 
+        <section className="section generated-showcase" id="generated">
+          <div className="container">
+            <div className="section__head">
+              <h2 className="section__title">Сгенерировано <span>нашим сервисом</span></h2>
+              <p className="section__subtitle">Посмотрите примеры обложек, созданных PreviewGen.</p>
+            </div>
+            <div className="generated-showcase__grid">
+              {generatedExamples.map((src, index) => (
+                <figure className="generated-showcase__item" key={src}>
+                  <img src={src} alt={`Пример работы ${index + 1}`} loading="lazy" />
+                </figure>
+              ))}
+            </div>
+          </div>
+        </section>
+
       </main>
 
       <footer className="footer">
@@ -246,6 +375,8 @@ function Landing() {
           <div className="footer__links">
             <a href="#how">Начать генерировать</a>
             <a href="#pricing">Тарифы</a>
+            <Link to="/offer">Оферта</Link>
+            <Link to="/privacy">Конфиденциальность</Link>
             {isAuthenticated ? (
               <button type="button" className="tg-badge tg-badge--login" onClick={() => navigate('/profile')} aria-label="Профиль">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -258,6 +389,9 @@ function Landing() {
               </button>
             )}
           </div>
+          <div className="footer__legal">
+            {LEGAL.fullName}, {LEGAL.taxStatus}, ИНН {LEGAL.inn}. Связь: {LEGAL.email}.
+          </div>
         </div>
       </footer>
       {authModalOpen && (
@@ -267,7 +401,13 @@ function Landing() {
               initialMode="login"
               onAuthenticated={() => {
                 setAuthModalOpen(false)
-                setTimeout(() => { window.location.replace('/studio') }, 150)
+                const savedPlan = localStorage.getItem('previewforge-pending-plan')
+                if (savedPlan) {
+                  localStorage.removeItem('previewforge-pending-plan')
+                  setTimeout(() => { window.location.replace('/profile') }, 150)
+                } else {
+                  setTimeout(() => { window.location.replace('/studio') }, 150)
+                }
               }}
               onClose={() => setAuthModalOpen(false)}
             />
@@ -286,6 +426,8 @@ function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/studio/*" element={<Dashboard />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/offer" element={<OfferPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
         </Routes>
       </TransitionProvider>
     </BrowserRouter>
