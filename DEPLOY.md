@@ -134,17 +134,26 @@ curl -s https://previewgen.ru/ | grep -n 'main.jsx'
 В корне лежит dev-версия `index.html` с `<script type="module" src="/src/main.jsx">`,
 которая перезаписывается при `git pull` и даёт пустую страницу.
 
-Лечится правкой `root` (см. раздел 4) и перезагрузкой nginx:
+Лечится правкой `root` и перезагрузкой nginx. Сначала найди конфиг сайта:
+```bash
+sudo grep -rln 'root /var/www/youtube-preview-app' /etc/nginx/
+```
+и замени путь на папку сборки (в типовом варианте из этого репозитория файл —
+`/etc/nginx/sites-available/youtube-preview-app`):
 ```bash
 sudo sed -i 's#root /var/www/youtube-preview-app;#root /var/www/youtube-preview-app/dist;#' \
   /etc/nginx/sites-available/youtube-preview-app
 sudo nginx -t && sudo systemctl reload nginx
 ```
+Важно: перед этим на сервере должна существовать папка `dist/` со сборкой
+(`cd /var/www/youtube-preview-app && npm install && npm run build`).
 
-Быстрая заплатка без правки nginx (до следующего `git pull`): положить собранный
-`index.html` из `dist/` в корень репозитория:
+Быстрая заплатка без правки nginx (действует до следующего `git pull`): положить
+собранный `index.html` в корень репозитория — именно его отдаёт nginx в текущей схеме:
 ```bash
-cd /var/www/youtube-preview-app && cp dist/index.html index.html
+cd /var/www/youtube-preview-app
+npm run build              # если папки dist/ на сервере ещё нет
+cp dist/index.html index.html
 ```
 `index.html` отслеживается git, поэтому перед следующим обновлением верни его
 исходную версию, иначе `git pull` откажется работать:
