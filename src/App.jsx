@@ -298,7 +298,7 @@ function Landing() {
             <h2 className="cta__title">Начать генерировать</h2>
             <p className="cta__text">Загрузите фото, выберите референс и получите готовые превью за секунды.</p>
             <div className="cta__buttons">
-              <TransitionLink to="/studio" className="btn btn--primary" onClick={(event) => { event.preventDefault(); event.stopPropagation(); setAuthModalOpen(true); return false; }}>Открыть студию</TransitionLink>
+              <TransitionLink to="/studio" className="btn btn--primary" onClick={() => { if (isAuthenticated) return true; setAuthModalOpen(true); return false; }}>Открыть студию</TransitionLink>
               <button type="button" className="btn btn--primary" onClick={() => isAuthenticated ? navigate('/profile') : setAuthModalOpen(true)}>
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 <span>Профиль</span>
