@@ -1,20 +1,16 @@
 import { useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
-import { initMetrika, trackMetrikaHit } from './lib/metrika'
+import { trackMetrikaHit } from './lib/metrika'
 
 /**
- * Подключает Яндекс.Метрику и сообщает ей о переходах между страницами.
+ * Сообщает Яндекс.Метрике о переходах между страницами внутри SPA.
  *
- * Первый просмотр Метрика считает сама при инициализации счётчика, поэтому
- * для самого первого рендера hit не отправляется — иначе был бы двойной учёт.
+ * Сам счётчик (загрузка tag.js и init) подключён в index.html — он же отправляет
+ * и первый просмотр, поэтому для первого рендера hit не дублируется.
  */
 export default function MetrikaTracker() {
   const location = useLocation()
   const isFirstRender = useRef(true)
-
-  useEffect(() => {
-    initMetrika()
-  }, [])
 
   useEffect(() => {
     if (isFirstRender.current) {
