@@ -4,6 +4,7 @@ import Dashboard, { AuthScreen } from './Dashboard'
 import ProfilePage from './ProfilePage'
 import { TransitionProvider, TransitionLink } from './Transition'
 import { OfferPage, PrivacyPage } from './LegalPages'
+import MetrikaTracker from './Metrika'
 import { LEGAL } from './lib/legal'
 import './App.css'
 import './Dashboard.css'
@@ -409,6 +410,7 @@ function Landing() {
 function App() {
   return (
     <BrowserRouter>
+      <MetrikaTracker />
       <TransitionProvider>
         <Routes>
           <Route path="/" element={<Landing />} />
