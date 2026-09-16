@@ -37,6 +37,13 @@ npm install
 npm run build
 ```
 
+Сборка кладёт готовый сайт в папку `dist/`. Именно её и должен отдавать nginx.
+
+> ⚠️ **Нельзя делать `root` на корень репозитория `/var/www/youtube-preview-app`.**
+> В корне лежит `index.html` для режима разработки: он подключает `/src/main.jsx`.
+> Браузер не умеет исполнять JSX-исходники, поэтому страница остаётся пустой (белый экран).
+> После `git pull` этот файл перезаписывается и ломает работающий сайт.
+
 ### 4. Настройка Nginx
 
 Создай конфиг:
@@ -45,6 +52,11 @@ sudo nano /etc/nginx/sites-available/youtube-preview-app
 ```
 
 Вставь содержимое файла `nginx.conf` из репозитория (не забудь заменить `your-domain.ru` на твой домен).
+Ключевая строка — путь до папки сборки:
+
+```nginx
+root /var/www/youtube-preview-app/dist;
+```
 
 Активируй сайт:
 ```bash
@@ -88,6 +100,16 @@ npm run build
 sudo systemctl reload nginx
 ```
 
+Копировать файлы из `dist/` в корень репозитория **не нужно** — nginx отдаёт папку `dist` напрямую.
+После `git pull` ничего не перезаписывается, белый экран не появляется.
+
+Проверить, что nginx реально смотрит на сборку:
+
+```bash
+grep -n 'root ' /etc/nginx/sites-available/youtube-preview-app
+# должно быть: root /var/www/youtube-preview-app/dist;
+```
+
 ## Важно
 
 - Edge Function `generate-preview` остаётся в Supabase — на VPS она не нужна
@@ -102,6 +124,34 @@ sudo nginx -t                    # проверь конфиг
 sudo systemctl status nginx      # проверь статус
 sudo journalctl -u nginx -f      # логи
 ```
+
+**Белый (пустой) экран — сайт отдаёт dev-index.html:**
+```bash
+# Проверь, что отдаёт сервер: если в ответе есть /src/main.jsx — nginx смотрит на корень репозитория
+curl -s https://previewgen.ru/ | grep -n 'main.jsx'
+```
+Причина: `root` в nginx указывает на корень репозитория, а не на `dist`.
+В корне лежит dev-версия `index.html` с `<script type="module" src="/src/main.jsx">`,
+которая перезаписывается при `git pull` и даёт пустую страницу.
+
+Лечится правкой `root` (см. раздел 4) и перезагрузкой nginx:
+```bash
+sudo sed -i 's#root /var/www/youtube-preview-app;#root /var/www/youtube-preview-app/dist;#' \
+  /etc/nginx/sites-available/youtube-preview-app
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Быстрая заплатка без правки nginx (до следующего `git pull`): положить собранный
+`index.html` из `dist/` в корень репозитория:
+```bash
+cd /var/www/youtube-preview-app && cp dist/index.html index.html
+```
+`index.html` отслеживается git, поэтому перед следующим обновлением верни его
+исходную версию, иначе `git pull` откажется работать:
+```bash
+cd /var/www/youtube-preview-app && git checkout -- index.html
+```
+Надёжнее сразу поправить `root` — тогда корневой `index.html` вообще перестаёт влиять на сайт.
 
 **Ошибки при сборке:**
 ```bash

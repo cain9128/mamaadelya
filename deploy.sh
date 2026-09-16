@@ -1,6 +1,11 @@
 #!/bin/bash
 set -e
 
+# Скрипт запускается НА сервере из папки репозитория.
+# Сайт отдаётся nginx из папки сборки dist — копировать файлы в корень репозитория НЕ нужно.
+# Причина: в корне лежит dev-версия index.html (подключает /src/main.jsx), из-за неё
+# сайт после git pull открывался пустой белой страницей.
+
 echo "🚀 Deploying youtube-preview-app to VPS..."
 
 # Configuration
@@ -8,27 +13,27 @@ REPO_DIR="/var/www/youtube-preview-app"
 NGINX_CONF="/etc/nginx/sites-available/youtube-preview-app"
 DOMAIN="your-domain.ru"  # Change this to your domain
 
+echo "📥 Pulling latest code..."
+cd "$REPO_DIR"
+git pull --ff-only
+
 echo "📦 Building production version..."
+npm install
 npm run build
 
-echo "📁 Creating deployment directory..."
-sudo mkdir -p $REPO_DIR
-sudo chown -R $USER:$USER $REPO_DIR
-
-echo "📋 Copying files..."
-cp -r dist/* $REPO_DIR/
-cp -r public $REPO_DIR/ 2>/dev/null || true
+echo "📁 Checking build output..."
+test -f "$REPO_DIR/dist/index.html" || { echo "❌ dist/index.html не найден — сборка не удалась"; exit 1; }
 
 echo "🔧 Setting permissions..."
-sudo chown -R www-data:www-data $REPO_DIR
-sudo chmod -R 755 $REPO_DIR
+sudo chown -R www-data:www-data "$REPO_DIR"
+sudo chmod -R 755 "$REPO_DIR"
 
 echo "🌐 Configuring Nginx..."
 sudo tee $NGINX_CONF > /dev/null <<EOF
 server {
     listen 80;
     server_name $DOMAIN www.$DOMAIN;
-    root $REPO_DIR;
+    root $REPO_DIR/dist;
     index index.html;
 
     # Gzip compression
@@ -51,8 +56,8 @@ server {
         add_header Cache-Control "public, immutable";
     }
 
-    # Don't cache HTML
-    location ~* \.html$ {
+    # index.html не кэшируем: иначе после деплоя браузер будет ссылаться на старый бандл
+    location = /index.html {
         expires -1;
         add_header Cache-Control "no-cache";
     }
@@ -69,3 +74,4 @@ sudo certbot --nginx -d $DOMAIN -d www.$DOMAIN --non-interactive --agree-tos --e
 
 echo "🎉 Deployment complete!"
 echo "🌍 Your site should be available at: https://$DOMAIN"
+
