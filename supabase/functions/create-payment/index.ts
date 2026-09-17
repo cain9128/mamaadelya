@@ -161,6 +161,7 @@ const ROBOKASSA_IS_TEST = Deno.env.get('ROBOKASSA_IS_TEST') === 'true'
 const ROBOKASSA_SUCCESS_URL = Deno.env.get('ROBOKASSA_SUCCESS_URL') ?? ''
 
 const plans = {
+  tokens3: { name: '3 токена без срока действия', price: 270, credits: 3 },
   creator: { name: 'Креатор', price: 890, credits: 14 },
   blogger: { name: 'Блогер', price: 1390, credits: 24 },
   studio: { name: 'Студия УЛЬТРАВЫГОДА', price: 2550, credits: 60 },

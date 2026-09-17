@@ -1,5 +1,25 @@
 # Деплой на VPS Timeweb
 
+## Пакет «3 токена» за 270 ₽
+
+Порядок выкладки (одной сборки фронтенда недостаточно):
+
+1. Применить миграцию `/Users/ilnur/Documents/PreviewGen/youtube-preview-app/supabase/migrations/20260917000001_add_permanent_credits.sql` в Supabase SQL Editor.
+2. Развернуть Edge Functions `create-payment`, `robokassa-result` и `verify-payment` из `/Users/ilnur/Documents/PreviewGen/youtube-preview-app/supabase/functions`. Сохранить текущие настройки JWT для публичных callback-функций Robokassa.
+3. Собрать и выложить фронтенд обычным способом.
+
+`credits` — общий баланс, `permanent_credits` — его бессрочная часть. Пакет не меняет подписку; сначала расходуются срочные кредиты. Начисление и отметка оплаты выполняются одной транзакцией `complete_payment`, доступной только `service_role`.
+
+Локальные тесты обработчиков без сети:
+
+```bash
+cd /Users/ilnur/Documents/PreviewGen/youtube-preview-app
+node --test /Users/ilnur/Documents/PreviewGen/youtube-preview-app/tests/payments.test.mjs
+```
+
+SQL-сценарии для отдельной тестовой Supabase-базы после применения миграций: `/Users/ilnur/Documents/PreviewGen/youtube-preview-app/supabase/tests/permanent_credits.sql`. Запускать целиком: изменения теста откатываются через `rollback`. Не использовать рабочую базу для тестов.
+
+
 ## Быстрый старт
 
 ### 1. Подготовка сервера

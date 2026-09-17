@@ -4,6 +4,7 @@ import { supabase } from './lib/supabase'
 import { getProfile, createProfile } from './lib/profile'
 
 const purchasePlans = [
+  { id: 'tokens3', name: '3 токена', price: 270, credits: 3, period: '/ разово', features: ['3 генерации (токена)', 'Зачисляются на баланс', 'Без срока действия', 'Без подписки'], featured: false },
   { id: 'creator', name: 'Креатор', price: 890, credits: 14, period: '/ месяц', features: ['14 генераций (токенов)', 'Все стили и пресеты', 'Загрузка референсов', 'PNG + WebP экспорт'], featured: false },
   { id: 'blogger', name: 'Блогер', price: 1390, credits: 24, period: '/ месяц', features: ['24 генерации (токенов)', 'Все стили и пресеты', 'Загрузка референсов', 'PNG + WebP экспорт'], featured: true },
   { id: 'studio', name: 'Студия УЛЬТРАВЫГОДА', price: 2550, credits: 60, period: '/ месяц', features: ['60 генераций (токенов)', 'Все стили и пресеты', 'Загрузка референсов', 'PNG + WebP экспорт'], featured: false },
@@ -252,7 +253,7 @@ export default function ProfilePage() {
                 {plan.featured && <span className="plan__badge">Хит</span>}
                 <span className="plan__name">{plan.name}</span>
                 <div className="plan__price">{plan.price} ₽<span>{plan.period}</span></div>
-                <div className="plan__credits">{plan.credits} кредитов</div>
+                <div className="plan__credits">Кредитов: {plan.credits}</div>
                 <ul className="plan__features">
                   {plan.features.map((f) => <li key={f}>{f}</li>)}
                 </ul>

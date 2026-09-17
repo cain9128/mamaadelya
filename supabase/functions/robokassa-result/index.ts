@@ -226,46 +226,22 @@ Deno.serve(async (request) => {
       return textResponse(`OK${invId}`, 200)
     }
 
-    // 4. Mark payment completed
-    await fetch(`${supabaseUrl}/rest/v1/payments?id=eq.${payment.id}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: supabaseKey,
-        Authorization: `Bearer ${supabaseKey}`,
-      },
-      body: JSON.stringify({ status: 'completed' }),
-    })
-
-    // 5. Add credits to user
-    await fetch(`${supabaseUrl}/rest/v1/rpc/add_credits`, {
+    // Atomically complete and credit the payment (shared with verify-payment).
+    const completionResp = await fetch(`${supabaseUrl}/rest/v1/rpc/complete_payment`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         apikey: supabaseKey,
         Authorization: `Bearer ${supabaseKey}`,
       },
-      body: JSON.stringify({
-        p_user_id: payment.user_id,
-        p_amount: payment.credits,
-      }),
+      body: JSON.stringify({ p_payment_id: payment.id }),
     })
+    if (!completionResp.ok) {
+      console.error('Robokassa: failed to complete payment')
+      return textResponse('payment processing failed', 500)
+    }
 
-    // 6. Update user's plan and subscription expiration (30 days from now)
-    await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${payment.user_id}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: supabaseKey,
-        Authorization: `Bearer ${supabaseKey}`,
-      },
-      body: JSON.stringify({
-        plan: payment.plan_name,
-        subscription_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      }),
-    })
-
-    console.log(`Robokassa: added ${payment.credits} credits, updated plan to ${payment.plan_name} for user ${payment.user_id}`)
+    console.log(`Robokassa: completed payment ${payment.id}`)
     return textResponse(`OK${invId}`, 200)
   } catch (error) {
     console.error('Robokassa result error:', error)

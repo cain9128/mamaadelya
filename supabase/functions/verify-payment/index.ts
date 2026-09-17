@@ -226,50 +226,21 @@ Deno.serve(async (request) => {
       return jsonResponse({ error: 'Сумма платежа не совпадает.' }, 400)
     }
 
-    let alreadyProcessed = false
-    if (payment.status === 'completed') {
-      // Idempotency: already processed (e.g. by robokassa-result webhook)
-      alreadyProcessed = true
-    } else {
-      // 4. Mark payment completed
-      await fetch(`${supabaseUrl}/rest/v1/payments?id=eq.${payment.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({ status: 'completed' }),
-      })
-
-      // 5. Add credits to user (same logic as robokassa-result)
-      await fetch(`${supabaseUrl}/rest/v1/rpc/add_credits`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({
-          p_user_id: payment.user_id,
-          p_amount: payment.credits,
-        }),
-      })
-
-      // 6. Update user's plan and subscription expiration (30 days)
-      await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${payment.user_id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({
-          plan: payment.plan_name,
-          subscription_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        }),
-      })
+    // The same atomic operation is used by robokassa-result.
+    const completionResp = await fetch(`${supabaseUrl}/rest/v1/rpc/complete_payment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+      },
+      body: JSON.stringify({ p_payment_id: payment.id }),
+    })
+    if (!completionResp.ok) {
+      console.error('verify-payment: failed to complete payment')
+      return jsonResponse({ error: 'Ошибка начисления кредитов. Попробуйте ещё раз.' }, 500)
     }
+    const { alreadyProcessed } = await completionResp.json()
 
     // 7. Return the fresh profile so the UI updates immediately
     const profileResp = await fetch(
